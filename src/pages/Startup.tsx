@@ -1,21 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Rocket, ArrowRight, Loader2, ChevronDown, ChevronUp, Plus, FileOutput, Sparkles } from 'lucide-react';
+import { Rocket, ArrowRight, Loader2, ChevronDown, ChevronUp, Plus, Sparkles, MessageSquare, FileText, ArrowLeft, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import PipelineFlow from '@/components/startup/PipelineFlow';
 import AgentChat from '@/components/startup/AgentChat';
 import DocumentPanel, { IdeaDocument } from '@/components/startup/DocumentPanel';
 import CenterCanvas from '@/components/startup/CenterCanvas';
-import AgentActivityFeed from '@/components/startup/AgentActivityFeed';
 import IdeaSelector, { StartupIdea } from '@/components/startup/IdeaSelector';
 import { STARTUP_AGENTS, PHASES, getAgentsByPhase } from '@/lib/startupAgents';
 import { streamChat } from '@/lib/streamChat';
 
 type Message = { role: 'user' | 'assistant'; content: string };
-type AgentMessage = Message & { agent: string; timestamp: number };
 
 export type ActivityEvent = {
   id: string;
@@ -27,6 +26,7 @@ export type ActivityEvent = {
 };
 
 const Startup = () => {
+  const { user, signOut } = useAuth();
   const [ideas, setIdeas] = useState<StartupIdea[]>([]);
   const [activeIdea, setActiveIdea] = useState<StartupIdea | null>(null);
   const [agentMessages, setAgentMessages] = useState<Record<string, Message[]>>({});
@@ -37,8 +37,9 @@ const Startup = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [flowExpanded, setFlowExpanded] = useState(true);
-  const [centerView, setCenterView] = useState<{ type: 'activity' | 'document' | 'agent_thread'; id?: string }>({ type: 'activity' });
+  const [centerView, setCenterView] = useState<{ type: 'activity' | 'document'; id?: string }>({ type: 'activity' });
   const [activityFeed, setActivityFeed] = useState<ActivityEvent[]>([]);
+  const [sidebarTab, setSidebarTab] = useState<'chat' | 'docs'>('chat');
 
   useEffect(() => { loadIdeas(); }, []);
 
@@ -63,7 +64,6 @@ const Startup = () => {
       supabase.from('idea_documents').select('*').eq('idea_id', ideaId).order('created_at'),
     ]);
 
-    // Group messages by agent
     const grouped: Record<string, Message[]> = {};
     (msgResult.data || []).forEach((m: any) => {
       if (!grouped[m.agent]) grouped[m.agent] = [];
@@ -74,10 +74,10 @@ const Startup = () => {
   };
 
   const createIdea = async () => {
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim() || !user) return;
     const { data, error } = await supabase
       .from('startup_ideas')
-      .insert({ title: newTitle.trim(), status: 'active', current_phase: 'intake' })
+      .insert({ title: newTitle.trim(), status: 'active', current_phase: 'intake', user_id: user.id })
       .select()
       .single();
 
@@ -90,6 +90,7 @@ const Startup = () => {
     setActiveAgent('chief_of_staff');
     setActivityFeed([]);
     setCenterView({ type: 'activity' });
+    setSidebarTab('chat');
     setShowNewDialog(false);
     setNewTitle('');
     toast.success('Idea created — chat with Chief of Staff to get started');
@@ -109,13 +110,12 @@ const Startup = () => {
   }, []);
 
   const advancePhase = async () => {
-    if (!activeIdea) return;
+    if (!activeIdea || !user) return;
     const currentIdx = PHASES.findIndex(p => p.id === activeIdea.current_phase);
     if (currentIdx >= PHASES.length - 1) return;
 
     const nextPhase = PHASES[currentIdx + 1].id;
 
-    // Save all current messages for all agents
     for (const [agentId, msgs] of Object.entries(agentMessages)) {
       if (msgs.length > 0) {
         await supabase.from('idea_messages').delete()
@@ -127,12 +127,12 @@ const Startup = () => {
           role: m.role,
           content: m.content,
           phase: activeIdea.current_phase,
+          user_id: user.id,
         }));
         await supabase.from('idea_messages').insert(msgInserts);
       }
     }
 
-    // Save intake brief as document
     if (activeIdea.current_phase === 'intake' && (agentMessages['chief_of_staff']?.length ?? 0) > 0) {
       const msgs = agentMessages['chief_of_staff'] || [];
       const briefContent = msgs.map(m => `**${m.role === 'user' ? 'Founder' : 'Chief of Staff'}:** ${m.content}`).join('\n\n');
@@ -143,6 +143,7 @@ const Startup = () => {
         title: 'Startup Brief',
         content: briefContent,
         status: 'complete',
+        user_id: user.id,
       });
     }
 
@@ -166,6 +167,7 @@ const Startup = () => {
   };
 
   const generatePhaseDocuments = async (idea: StartupIdea, phase: string) => {
+    if (!user) return;
     const phaseAgents = getAgentsByPhase(phase);
     setGenerating(true);
     setCenterView({ type: 'activity' });
@@ -177,7 +179,6 @@ const Startup = () => {
     const fullContext = chatContext + (context ? '\n\n---\n\n' + context : '');
 
     for (const agent of phaseAgents) {
-      // Delegation animation
       addActivity({
         type: 'delegation',
         fromAgent: 'chief_of_staff',
@@ -223,6 +224,7 @@ const Startup = () => {
               title: docTitle,
               content,
               status: 'complete',
+              user_id: user.id,
             });
             addActivity({
               type: 'doc_complete',
@@ -268,7 +270,7 @@ const Startup = () => {
             <IdeaSelector
               ideas={ideas}
               activeIdea={activeIdea}
-              onSelect={(idea) => { setActiveIdea(idea); setActiveAgent('chief_of_staff'); setCenterView({ type: 'activity' }); }}
+              onSelect={(idea) => { setActiveIdea(idea); setActiveAgent('chief_of_staff'); setCenterView({ type: 'activity' }); setSidebarTab('chat'); }}
               onNew={() => setShowNewDialog(true)}
             />
             {canAdvance && (
@@ -280,6 +282,9 @@ const Startup = () => {
                 )}
               </Button>
             )}
+            <Button variant="ghost" size="sm" onClick={signOut} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
+              <LogOut className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
       </div>
@@ -301,71 +306,121 @@ const Startup = () => {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex overflow-hidden">
-          {/* LEFT: Agent Chat Sidebar */}
-          <div className="w-80 flex-shrink-0 border-r border-border/40 flex flex-col bg-card/20">
-            <AgentChat
-              ideaId={activeIdea.id}
-              agent={activeAgent}
-              context={documents.filter(d => d.status === 'complete').map(d => `## ${d.title}\n\n${d.content}`).join('\n\n')}
-              messages={agentMessages[activeAgent] || []}
-              onMessagesChange={(msgs) => handleMessagesChange(activeAgent, msgs)}
-              onReadyToAdvance={() => toast.info('Chief of Staff is ready to advance. Click "Advance" when you\'re ready.')}
-              onDelegation={(fromAgent, toAgent, msg) => {
-                addActivity({ type: 'delegation', fromAgent, toAgent, content: msg });
-              }}
-            />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Full-width Pipeline Flow — collapsible */}
+          <div className="flex-shrink-0 border-b border-border/40">
+            <button
+              onClick={() => setFlowExpanded(!flowExpanded)}
+              className="w-full flex items-center justify-between px-5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors bg-card/30"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3 h-3 text-primary" />
+                Pipeline Flow
+              </div>
+              {flowExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+            {flowExpanded && (
+              <div className="px-5 pb-3 bg-card/20">
+                <PipelineFlow
+                  currentPhase={activeIdea.current_phase}
+                  activeAgent={activeAgent}
+                  onAgentClick={(agentId) => {
+                    setActiveAgent(agentId);
+                    setSidebarTab('chat');
+                  }}
+                  documents={documents}
+                  generating={generating}
+                />
+              </div>
+            )}
           </div>
 
-          {/* CENTER: Dynamic Canvas */}
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-            {/* Flow diagram - collapsible */}
-            <div className="flex-shrink-0 border-b border-border/40">
-              <button
-                onClick={() => setFlowExpanded(!flowExpanded)}
-                className="w-full flex items-center justify-between px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors bg-card/30"
-              >
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-3 h-3 text-primary" />
-                  Pipeline Flow
-                </div>
-                {flowExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </button>
-              {flowExpanded && (
-                <div className="px-4 pb-3 bg-card/20">
-                  <PipelineFlow
-                    currentPhase={activeIdea.current_phase}
-                    activeAgent={activeAgent}
-                    onAgentClick={(agentId) => {
-                      setActiveAgent(agentId);
+          {/* Main content: sidebar + center canvas */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* LEFT SIDEBAR: Chat + Docs tabs */}
+            <div className="w-96 flex-shrink-0 border-r border-border/40 flex flex-col bg-card/20">
+              {/* Tab switcher */}
+              <div className="flex border-b border-border/40 flex-shrink-0">
+                <button
+                  onClick={() => setSidebarTab('chat')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors ${
+                    sidebarTab === 'chat'
+                      ? 'text-primary border-b-2 border-primary bg-primary/5'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Chat
+                </button>
+                <button
+                  onClick={() => setSidebarTab('docs')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors ${
+                    sidebarTab === 'docs'
+                      ? 'text-primary border-b-2 border-primary bg-primary/5'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Docs
+                  {documents.length > 0 && (
+                    <span className="ml-1 text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                      {documents.filter(d => d.status === 'complete' || d.status === 'reviewed').length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Tab content */}
+              <div className="flex-1 overflow-hidden">
+                {sidebarTab === 'chat' ? (
+                  <AgentChat
+                    ideaId={activeIdea.id}
+                    agent={activeAgent}
+                    context={documents.filter(d => d.status === 'complete').map(d => `## ${d.title}\n\n${d.content}`).join('\n\n')}
+                    messages={agentMessages[activeAgent] || []}
+                    onMessagesChange={(msgs) => handleMessagesChange(activeAgent, msgs)}
+                    onReadyToAdvance={() => toast.info('Chief of Staff is ready to advance. Click "Advance" when you\'re ready.')}
+                    onDelegation={(fromAgent, toAgent, msg) => {
+                      addActivity({ type: 'delegation', fromAgent, toAgent, content: msg });
                     }}
-                    documents={documents}
-                    generating={generating}
                   />
+                ) : (
+                  <DocumentPanel
+                    documents={documents}
+                    activePhase={activeIdea.current_phase}
+                    onDocumentUpdate={handleDocumentUpdate}
+                    onDocumentClick={(docId) => {
+                      setCenterView({ type: 'document', id: docId });
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* CENTER: Dynamic Canvas */}
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+              {/* Back button when viewing a document */}
+              {centerView.type === 'document' && (
+                <div className="flex-shrink-0 px-4 py-2 border-b border-border/40 bg-card/30">
+                  <button
+                    onClick={() => setCenterView({ type: 'activity' })}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ArrowLeft className="w-3 h-3" />
+                    Back to Activity
+                  </button>
                 </div>
               )}
+              <div className="flex-1 overflow-hidden">
+                <CenterCanvas
+                  view={centerView}
+                  documents={documents}
+                  activityFeed={activityFeed}
+                  onDocumentUpdate={handleDocumentUpdate}
+                  generating={generating}
+                />
+              </div>
             </div>
-
-            {/* Center content */}
-            <div className="flex-1 overflow-hidden">
-              <CenterCanvas
-                view={centerView}
-                documents={documents}
-                activityFeed={activityFeed}
-                onDocumentUpdate={handleDocumentUpdate}
-                generating={generating}
-              />
-            </div>
-          </div>
-
-          {/* RIGHT: Documents Hub */}
-          <div className="w-72 flex-shrink-0 border-l border-border/40 flex flex-col bg-card/20">
-            <DocumentPanel
-              documents={documents}
-              activePhase={activeIdea.current_phase}
-              onDocumentUpdate={handleDocumentUpdate}
-              onDocumentClick={(docId) => setCenterView({ type: 'document', id: docId })}
-            />
           </div>
         </div>
       )}

@@ -123,6 +123,7 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           agent: string
@@ -134,6 +135,7 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           agent?: string
@@ -145,6 +147,7 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -165,6 +168,7 @@ export type Database = {
           idea_id: string
           phase: string
           role: string
+          user_id: string | null
         }
         Insert: {
           agent?: string
@@ -174,6 +178,7 @@ export type Database = {
           idea_id: string
           phase?: string
           role?: string
+          user_id?: string | null
         }
         Update: {
           agent?: string
@@ -183,6 +188,7 @@ export type Database = {
           idea_id?: string
           phase?: string
           role?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -278,6 +284,7 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -287,6 +294,7 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -296,6 +304,7 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
