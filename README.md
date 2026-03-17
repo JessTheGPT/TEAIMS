@@ -1,73 +1,86 @@
-# Welcome to your Lovable project
+# 🚀 AgentOS — Multi-Agent Startup Builder
 
-## Project info
+Build startups with AI agent teams. Spin up entire crews that research, plan, architect, design, develop, audit, and launch — all orchestrated through sequential pipelines with human-in-the-loop checkpoints.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## What It Does
 
-## How can I edit this code?
+AgentOS operationalizes two distinct agent teams that take a founder's idea from raw concept to launch-ready startup:
 
-There are several ways of editing your application.
+### 🏢 Startup Crew (6 Agents)
+A classic startup team that covers the core functions:
+- **Chief of Staff** — Intake & synthesis, the strategic operator
+- **Tech Lead** — System architecture & tech stack decisions
+- **Business Exec** — Market strategy, business model, GTM
+- **Designer** — UX strategy, personas, design system
+- **Developer** — Implementation plan, sprint breakdown
+- **Competitive Research** — Market intelligence & competitor analysis
 
-**Use Lovable**
+### ⚡ Elite 9 Squad (9 Agents)
+A high-fidelity, opinionated squad modeled after top-tier operators:
+- **A1 Market Strategist** — TAM/SAM/SOM, competitor deep-dive, kill-or-validate
+- **A2 Visionary PM** — Scope lock (6 features max), acceptance criteria
+- **A3 Systems Architect** — Full architecture, ERD, API contracts
+- **A4 UI Specialist** — Production-ready design system & component code
+- **A5 Frontend Engineer** — Implementation with quality gates (Lighthouse ≥98)
+- **A6 Backend Engineer** — Zero N+1 queries, Prisma schema, background jobs
+- **A7 Security Auditor** — OWASP Top 10, RLS audit, deployment blocker
+- **A8 Growth Lead** — 500+ waitlist strategy, pricing, A/B tests
+- **A9 SRE/Ops/Legal** — CI/CD, GDPR, TOS, launch runbook
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### Key Features
+- **Sequential Pipeline** — Each agent builds on cumulative context from all previous phases
+- **Streaming AI Responses** — Real-time document generation via edge functions
+- **Human-in-the-Loop (HITL)** — Checkpoints where founders review and approve before advancing
+- **Persistent State** — Ideas, messages, and documents saved per user with RLS
+- **Collapsible Layout** — Full-width pipeline top, tabbed chat/docs sidebar for maximum workspace
+- **Auth-Protected** — Email auth with row-level security on all user data
 
-Changes made via Lovable will be committed automatically to this repo.
+## Architecture
 
-**Use your preferred IDE**
+```
+┌─────────────────────────────────────────────┐
+│  React + Vite + Tailwind + shadcn/ui        │
+│  ├── /startup  — Startup Crew pipeline      │
+│  ├── /squad    — Elite 9 Squad pipeline      │
+│  └── /auth     — Email authentication        │
+├─────────────────────────────────────────────┤
+│  Lovable Cloud (Supabase)                    │
+│  ├── Edge Function: startup-chat (streaming) │
+│  ├── Tables: startup_ideas, idea_messages,   │
+│  │           idea_documents                  │
+│  └── RLS: user_id = auth.uid() on all tables │
+└─────────────────────────────────────────────┘
+```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Tech Stack
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **Frontend**: React, TypeScript, Vite, Tailwind CSS, shadcn/ui, Framer Motion
+- **Backend**: Lovable Cloud (Supabase) — Edge Functions, Postgres, RLS
+- **AI**: Lovable AI Gateway (Gemini 3 Flash Preview) — streaming SSE
+- **Auth**: Email/password with row-level security
 
-Follow these steps:
+## Getting Started
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
 npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## How It Works
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. **Sign up** with email
+2. **Choose a crew** — Startup Crew (6 agents) or Elite 9 Squad (9 agents)
+3. **Describe your idea** — Chat with the intake agent
+4. **Watch agents work** — Each generates a structured document
+5. **Review at HITL checkpoints** — Approve or provide feedback
+6. **Get a complete startup package** — Market validation, architecture, design, implementation plan, security audit, growth strategy, and launch runbook
 
-**Use GitHub Codespaces**
+## Roadmap
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- [ ] **Agent Debate Canvas** — Multi-agent adversarial discussions with push/pull dynamics
+- [ ] **Red Lines System** — Each agent has non-negotiable constraints and flexible areas
+- [ ] **Cross-Domain Challenges** — Growth vs Risk, Business vs Tech, Design vs Compliance
+- [ ] **Document Export** — Download all generated documents as PDF/markdown bundle
+- [ ] **Idea Comparison** — Compare outputs across different crews for the same idea
