@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { streamChat } from '@/lib/streamChat';
 import { STARTUP_AGENTS } from '@/lib/startupAgents';
+import { SQUAD_AGENTS } from '@/lib/squadAgents';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -27,7 +28,7 @@ const AgentChat = ({
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const agentInfo = STARTUP_AGENTS.find(a => a.id === agent);
+  const agentInfo = STARTUP_AGENTS.find(a => a.id === agent) || SQUAD_AGENTS.find(a => a.id === agent);
 
   useEffect(() => {
     if (scrollRef.current) {

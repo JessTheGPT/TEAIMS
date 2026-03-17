@@ -13,6 +13,7 @@ import Prompts from "./pages/Prompts";
 import Builder from "./pages/Builder";
 import Share from "./pages/Share";
 import Startup from "./pages/Startup";
+import Squad from "./pages/Squad";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/builder" element={<Builder />} />
               <Route path="/share" element={<Share />} />
               <Route path="/startup" element={<ProtectedRoute><Startup /></ProtectedRoute>} />
+              <Route path="/squad" element={<ProtectedRoute><Squad /></ProtectedRoute>} />
               <Route path="/resources" element={<Toolbox />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
