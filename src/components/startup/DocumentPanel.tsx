@@ -26,12 +26,8 @@ const statusConfig: Record<string, { icon: typeof Clock; label: string; color: s
 };
 
 const DocumentPanel = ({ documents, activePhase, onDocumentClick }: DocumentPanelProps) => {
-  const phaseOrder = ['intake', 'strategy', 'execution', 'synthesis', 'launch'];
-  const currentIdx = phaseOrder.indexOf(activePhase);
-  const visibleDocs = documents.filter(d => {
-    const docPhaseIdx = phaseOrder.indexOf(d.phase);
-    return docPhaseIdx <= currentIdx;
-  });
+  // Show all documents — no phase filtering needed for squad mode
+  const visibleDocs = documents;
 
   return (
     <div className="flex flex-col h-full">
