@@ -112,6 +112,53 @@ export type Database = {
         }
         Relationships: []
       }
+      debate_messages: {
+        Row: {
+          agent: string
+          content: string
+          created_at: string
+          debate_id: string
+          id: string
+          idea_id: string
+          red_line_triggered: boolean | null
+          round: number
+          stance: string | null
+          user_id: string | null
+        }
+        Insert: {
+          agent: string
+          content: string
+          created_at?: string
+          debate_id: string
+          id?: string
+          idea_id: string
+          red_line_triggered?: boolean | null
+          round?: number
+          stance?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          agent?: string
+          content?: string
+          created_at?: string
+          debate_id?: string
+          id?: string
+          idea_id?: string
+          red_line_triggered?: boolean | null
+          round?: number
+          stance?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debate_messages_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "startup_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       idea_documents: {
         Row: {
           agent: string
