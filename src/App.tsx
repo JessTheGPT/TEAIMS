@@ -44,6 +44,7 @@ const App = () => (
               <Route path="/builder" element={<Builder />} />
               <Route path="/share" element={<Share />} />
               <Route path="/startup" element={<ProtectedRoute><Startup /></ProtectedRoute>} />
+              <Route path="/squad" element={<ProtectedRoute><Squad /></ProtectedRoute>} />
               <Route path="/resources" element={<Toolbox />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
