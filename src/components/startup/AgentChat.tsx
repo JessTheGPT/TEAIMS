@@ -28,7 +28,7 @@ const AgentChat = ({
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const agentInfo = STARTUP_AGENTS.find(a => a.id === agent);
+  const agentInfo = STARTUP_AGENTS.find(a => a.id === agent) || SQUAD_AGENTS.find(a => a.id === agent);
 
   useEffect(() => {
     if (scrollRef.current) {
