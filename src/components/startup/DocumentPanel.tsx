@@ -47,7 +47,7 @@ const DocumentPanel = ({ documents, activePhase, onDocumentClick }: DocumentPane
           </div>
         ) : (
           visibleDocs.map((doc) => {
-            const agent = STARTUP_AGENTS.find(a => a.id === doc.agent);
+            const agent = STARTUP_AGENTS.find(a => a.id === doc.agent) || SQUAD_AGENTS.find(a => a.id === doc.agent);
             const status = statusConfig[doc.status];
             const StatusIcon = status.icon;
 
