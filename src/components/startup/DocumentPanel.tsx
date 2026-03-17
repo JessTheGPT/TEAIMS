@@ -1,5 +1,6 @@
 import { FileText, Loader2, CheckCircle, Clock } from 'lucide-react';
 import { STARTUP_AGENTS } from '@/lib/startupAgents';
+import { SQUAD_AGENTS } from '@/lib/squadAgents';
 
 export interface IdeaDocument {
   id: string;
