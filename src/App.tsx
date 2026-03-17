@@ -13,6 +13,7 @@ import Prompts from "./pages/Prompts";
 import Builder from "./pages/Builder";
 import Share from "./pages/Share";
 import Startup from "./pages/Startup";
+import Squad from "./pages/Squad";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
