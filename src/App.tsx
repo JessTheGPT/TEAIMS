@@ -14,6 +14,8 @@ import Builder from "./pages/Builder";
 import Share from "./pages/Share";
 import Startup from "./pages/Startup";
 import Squad from "./pages/Squad";
+import Context from "./pages/Context";
+import Judgement from "./pages/Judgement";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -45,6 +47,8 @@ const App = () => (
               <Route path="/share" element={<Share />} />
               <Route path="/startup" element={<ProtectedRoute><Startup /></ProtectedRoute>} />
               <Route path="/squad" element={<ProtectedRoute><Squad /></ProtectedRoute>} />
+              <Route path="/context" element={<ProtectedRoute><Context /></ProtectedRoute>} />
+              <Route path="/judgement" element={<ProtectedRoute><Judgement /></ProtectedRoute>} />
               <Route path="/resources" element={<Toolbox />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

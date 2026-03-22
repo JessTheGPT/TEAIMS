@@ -112,6 +112,51 @@ export type Database = {
         }
         Relationships: []
       }
+      context_files: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          description: string | null
+          id: string
+          is_shared: boolean
+          slug: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          category?: string
+          content?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_shared?: boolean
+          slug: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_shared?: boolean
+          slug?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
       debate_messages: {
         Row: {
           agent: string
@@ -246,6 +291,99 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      judgement_entries: {
+        Row: {
+          agent: string
+          category: string
+          confidence_level: string | null
+          context: string | null
+          created_at: string
+          decision: string | null
+          id: string
+          options: Json | null
+          question: string
+          reasoning: string | null
+          reviewed_at: string | null
+          rule_created: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent?: string
+          category?: string
+          confidence_level?: string | null
+          context?: string | null
+          created_at?: string
+          decision?: string | null
+          id?: string
+          options?: Json | null
+          question: string
+          reasoning?: string | null
+          reviewed_at?: string | null
+          rule_created?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent?: string
+          category?: string
+          confidence_level?: string | null
+          context?: string | null
+          created_at?: string
+          decision?: string | null
+          id?: string
+          options?: Json | null
+          question?: string
+          reasoning?: string | null
+          reviewed_at?: string | null
+          rule_created?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      judgement_rules: {
+        Row: {
+          active: boolean
+          category: string
+          confidence: string
+          created_at: string
+          examples: Json | null
+          id: string
+          rule: string
+          times_applied: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          category: string
+          confidence?: string
+          created_at?: string
+          examples?: Json | null
+          id?: string
+          rule: string
+          times_applied?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          confidence?: string
+          created_at?: string
+          examples?: Json | null
+          id?: string
+          rule?: string
+          times_applied?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       prompt_templates: {
         Row: {
