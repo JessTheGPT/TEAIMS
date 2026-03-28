@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     const pathParts = url.pathname.split('/').filter(Boolean)
     const token = pathParts[pathParts.length - 1]
 
-    if (!token) {
+    if (!token || token === 'agent-context') {
       return new Response(
         JSON.stringify({ error: 'Token required. Usage: /agent-context/{token}' }),
         { status: 400, headers: corsHeaders }
@@ -32,7 +32,6 @@ Deno.serve(async (req) => {
       .from('share_tokens')
       .select('*')
       .eq('token', token)
-      .eq('resource_type', 'context')
       .single()
 
     if (tokenError || !tokenData) {
@@ -58,7 +57,42 @@ Deno.serve(async (req) => {
       })
       .eq('id', tokenData.id)
 
-    // Fetch all shared context files
+    // If resource_id is set, return single file
+    if (tokenData.resource_id && tokenData.resource_type === 'context_file') {
+      const { data: file } = await supabase
+        .from('context_files')
+        .select('slug, title, content, category, description, version, updated_at')
+        .eq('id', tokenData.resource_id)
+        .eq('is_shared', true)
+        .single()
+
+      if (!file) {
+        return new Response(
+          JSON.stringify({ error: 'File not found or no longer shared' }),
+          { status: 404, headers: corsHeaders }
+        )
+      }
+
+      return new Response(
+        JSON.stringify({
+          generated_at: new Date().toISOString(),
+          format: 'agent-context-v1',
+          mode: 'single_file',
+          file: {
+            slug: file.slug,
+            title: file.title,
+            category: file.category,
+            content: file.content,
+            description: file.description,
+            version: file.version,
+            updated_at: file.updated_at,
+          },
+        }, null, 2),
+        { headers: corsHeaders }
+      )
+    }
+
+    // Aggregate: fetch all shared context files for the token owner
     const { data: files } = await supabase
       .from('context_files')
       .select('slug, title, content, category, description, version, updated_at')
@@ -66,10 +100,10 @@ Deno.serve(async (req) => {
       .order('category')
       .order('title')
 
-    // Format as agent-consumable context
     const context: Record<string, unknown> = {
       generated_at: new Date().toISOString(),
       format: 'agent-context-v1',
+      mode: 'aggregate',
       files: (files || []).reduce((acc: Record<string, unknown>, file: any) => {
         acc[file.slug] = {
           title: file.title,
@@ -88,7 +122,7 @@ Deno.serve(async (req) => {
       })),
     }
 
-    // Also fetch active judgement rules for the owner
+    // Also fetch active judgement rules
     const { data: rules } = await supabase
       .from('judgement_rules')
       .select('category, rule, confidence, active')
