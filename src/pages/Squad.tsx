@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, ArrowRight, Loader2, ChevronDown, ChevronUp, Plus, Sparkles, MessageSquare, FileText, ArrowLeft, LogOut, Users } from 'lucide-react';
+import { Zap, ArrowRight, Loader2, ChevronDown, ChevronUp, Plus, Sparkles, MessageSquare, FileText, ArrowLeft, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -11,16 +11,16 @@ import DebateCanvas from '@/components/squad/DebateCanvas';
 import DebateFlowVisualization from '@/components/squad/DebateFlowVisualization';
 import AgentChat from '@/components/startup/AgentChat';
 import DocumentPanel, { IdeaDocument } from '@/components/startup/DocumentPanel';
-import CenterCanvas from '@/components/startup/CenterCanvas';
-import IdeaSelector, { StartupIdea } from '@/components/startup/IdeaSelector';
-import AgentActivityFeed from '@/components/startup/AgentActivityFeed';
 import DocumentViewer from '@/components/startup/DocumentViewer';
+import AgentActivityFeed from '@/components/startup/AgentActivityFeed';
+import IdeaSelector, { StartupIdea } from '@/components/startup/IdeaSelector';
 import { SQUAD_AGENTS } from '@/lib/squadAgents';
 import { DEBATE_PAIRS } from '@/lib/debateConfig';
 import { streamChat } from '@/lib/streamChat';
 import type { ActivityEvent } from '@/pages/Startup';
 
 type Message = { role: 'user' | 'assistant'; content: string };
+type CenterTab = 'activity' | 'docs' | 'debates';
 
 const Squad = () => {
   const { user, signOut } = useAuth();
@@ -36,9 +36,9 @@ const Squad = () => {
   const [generating, setGenerating] = useState(false);
   const [generatingAgent, setGeneratingAgent] = useState<string | undefined>();
   const [flowExpanded, setFlowExpanded] = useState(true);
-  const [centerView, setCenterView] = useState<{ type: 'activity' | 'document' | 'agent_thread'; id?: string }>({ type: 'activity' });
+  const [centerTab, setCenterTab] = useState<CenterTab>('activity');
+  const [viewingDocId, setViewingDocId] = useState<string | null>(null);
   const [activityFeed, setActivityFeed] = useState<ActivityEvent[]>([]);
-  const [sidebarTab, setSidebarTab] = useState<'chat' | 'docs' | 'debates'>('chat');
   const [completedAgents, setCompletedAgents] = useState<Set<string>>(new Set());
   const [completedDebates, setCompletedDebates] = useState<Set<string>>(new Set());
   const [debateRedLines, setDebateRedLines] = useState<Record<string, boolean>>({});
@@ -84,9 +84,7 @@ const Squad = () => {
 
     const completed = new Set<string>();
     docs.forEach(d => {
-      if (d.status === 'complete' || d.status === 'reviewed') {
-        completed.add(d.agent);
-      }
+      if (d.status === 'complete' || d.status === 'reviewed') completed.add(d.agent);
     });
     setCompletedAgents(completed);
 
@@ -116,8 +114,8 @@ const Squad = () => {
     setCompletedDebates(new Set());
     setDebateRedLines({});
     setActivityFeed([]);
-    setCenterView({ type: 'activity' });
-    setSidebarTab('chat');
+    setCenterTab('activity');
+    setViewingDocId(null);
     setShowNewDialog(false);
     setNewTitle('');
     toast.success('Idea created — chat with the Market Strategist to validate your idea');
@@ -181,7 +179,6 @@ const Squad = () => {
 
     setCompletedAgents(prev => new Set([...prev, activeAgent]));
 
-    // Check if there's a debate to trigger
     const debatesAfterAgent = DEBATE_PAIRS.filter(d => d.afterAgent === activeAgent && !completedDebates.has(d.id));
     if (debatesAfterAgent.length > 0) {
       addActivity({
@@ -189,7 +186,7 @@ const Squad = () => {
         fromAgent: activeAgent,
         content: `💬 Debate available: ${debatesAfterAgent.map(d => d.topic).join(', ')}`,
       });
-      setSidebarTab('debates');
+      setCenterTab('debates');
       toast.info(`Debate unlocked: ${debatesAfterAgent[0].topic}`, {
         description: 'Switch to the Debates tab to watch agents challenge each other.',
       });
@@ -199,7 +196,6 @@ const Squad = () => {
       const nextAgent = SQUAD_AGENTS[currentAgentIdx + 1];
       setActiveAgent(nextAgent.id);
       setCurrentStep(currentAgentIdx + 1);
-      if (!debatesAfterAgent.length) setSidebarTab('chat');
 
       addActivity({
         type: 'phase_advance',
@@ -320,6 +316,9 @@ const Squad = () => {
     toast.success('Idea renamed');
   };
 
+  // Viewing a specific document
+  const viewingDoc = viewingDocId ? documents.find(d => d.id === viewingDocId) : null;
+
   return (
     <div className="h-screen flex flex-col bg-background pt-12 overflow-hidden">
       {/* Top bar */}
@@ -334,7 +333,7 @@ const Squad = () => {
             <IdeaSelector
               ideas={ideas}
               activeIdea={activeIdea}
-              onSelect={(idea) => { setActiveIdea(idea); setActiveAgent(SQUAD_AGENTS[0].id); setCenterView({ type: 'activity' }); setSidebarTab('chat'); }}
+              onSelect={(idea) => { setActiveIdea(idea); setActiveAgent(SQUAD_AGENTS[0].id); setCenterTab('activity'); setViewingDocId(null); }}
               onNew={() => setShowNewDialog(true)}
               onRename={handleRenameIdea}
             />
@@ -362,7 +361,6 @@ const Squad = () => {
             <h2 className="text-lg font-semibold text-foreground mb-2">Elite 9-Agent Launch Squad</h2>
             <p className="text-sm text-muted-foreground mb-6">
               9 specialized agents + adversarial debates. Each agent has red lines they won't cross.
-              Structured debates at key transitions, open forum at the end.
             </p>
             <Button onClick={() => setShowNewDialog(true)} className="gap-2">
               <Plus className="w-4 h-4" /> New Idea
@@ -371,17 +369,17 @@ const Squad = () => {
         </div>
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Full-width Pipeline Flow with Debate Visualization */}
+          {/* Collapsible pipeline */}
           <div className="flex-shrink-0 border-b border-border/40">
             <button
               onClick={() => setFlowExpanded(!flowExpanded)}
-              className="w-full flex items-center justify-between px-5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors bg-card/30"
+              className="w-full flex items-center justify-between px-5 py-1.5 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors bg-card/30"
             >
               <div className="flex items-center gap-2">
                 <Sparkles className="w-3 h-3 text-primary" />
-                Agent Pipeline & Debates — A1 → A9
+                Pipeline
                 {completedDebates.size > 0 && (
-                  <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                  <span className="text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
                     {completedDebates.size} debates
                   </span>
                 )}
@@ -389,14 +387,11 @@ const Squad = () => {
               {flowExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
             {flowExpanded && (
-              <div className="px-5 pb-3 bg-card/20 space-y-2">
+              <div className="px-5 pb-2 bg-card/20 space-y-1.5">
                 <SquadPipelineFlow
                   currentStep={currentStep}
                   activeAgent={activeAgent}
-                  onAgentClick={(agentId) => {
-                    setActiveAgent(agentId);
-                    setSidebarTab('chat');
-                  }}
+                  onAgentClick={(agentId) => { setActiveAgent(agentId); }}
                   completedAgents={completedAgents}
                   generatingAgent={generatingAgent}
                 />
@@ -404,120 +399,144 @@ const Squad = () => {
                   completedAgents={completedAgents}
                   completedDebates={completedDebates}
                   debateRedLines={debateRedLines}
-                  onDebateClick={(debateId) => {
-                    setSidebarTab('debates');
-                  }}
+                  onDebateClick={() => setCenterTab('debates')}
                 />
               </div>
             )}
           </div>
 
-          {/* Main content */}
+          {/* Main content: chat sidebar + center */}
           <div className="flex-1 flex overflow-hidden">
-            {/* Sidebar with 3 tabs */}
-            <div className="w-[420px] flex-shrink-0 border-r border-border/40 flex flex-col bg-card/20">
-              <div className="flex border-b border-border/40 flex-shrink-0">
-                <button
-                  onClick={() => setSidebarTab('chat')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors ${
-                    sidebarTab === 'chat'
-                      ? 'text-primary border-b-2 border-primary bg-primary/5'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  Chat
-                </button>
-                <button
-                  onClick={() => setSidebarTab('docs')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors ${
-                    sidebarTab === 'docs'
-                      ? 'text-primary border-b-2 border-primary bg-primary/5'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  Docs
-                  {documents.length > 0 && (
-                    <span className="ml-1 text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                      {documents.filter(d => d.status === 'complete' || d.status === 'reviewed').length}
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setSidebarTab('debates')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors ${
-                    sidebarTab === 'debates'
-                      ? 'text-primary border-b-2 border-primary bg-primary/5'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  Debates
-                  {completedDebates.size > 0 && (
-                    <span className="ml-1 text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                      {completedDebates.size}
-                    </span>
-                  )}
-                </button>
+            {/* Chat sidebar — agent list + active chat */}
+            <div className="w-80 flex-shrink-0 border-r border-border/40 flex flex-col bg-card/20">
+              {/* Agent list */}
+              <div className="flex-shrink-0 border-b border-border/40 overflow-x-auto">
+                <div className="flex p-1.5 gap-1">
+                  {SQUAD_AGENTS.map((agent) => {
+                    const isActive = activeAgent === agent.id;
+                    const isCompleted = completedAgents.has(agent.id);
+                    const msgCount = (agentMessages[agent.id] || []).length;
+                    return (
+                      <button
+                        key={agent.id}
+                        onClick={() => setActiveAgent(agent.id)}
+                        className={`flex-shrink-0 flex items-center gap-1 px-2 py-1.5 rounded-md text-[10px] transition-all ${
+                          isActive
+                            ? 'bg-primary/10 text-primary border border-primary/30'
+                            : isCompleted
+                            ? 'bg-muted/50 text-foreground border border-transparent hover:border-border/40'
+                            : 'text-muted-foreground border border-transparent hover:bg-muted/30'
+                        }`}
+                        title={agent.name}
+                      >
+                        <span className="text-xs">{agent.icon}</span>
+                        {msgCount > 0 && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-
+              {/* Active chat */}
               <div className="flex-1 overflow-hidden">
-                {sidebarTab === 'chat' ? (
-                  <AgentChat
-                    ideaId={activeIdea.id}
-                    agent={activeAgent}
-                    context={documents.filter(d => d.status === 'complete').map(d => `## ${d.title}\n\n${d.content}`).join('\n\n')}
-                    messages={agentMessages[activeAgent] || []}
-                    onMessagesChange={(msgs) => handleMessagesChange(activeAgent, msgs)}
-                    onReadyToAdvance={() => toast.info('Agent is ready to advance. Click "Next Agent" to proceed.')}
-                  />
-                ) : sidebarTab === 'docs' ? (
-                  <DocumentPanel
-                    documents={documents}
-                    activePhase={activeAgent}
-                    onDocumentUpdate={handleDocumentUpdate}
-                    onDocumentClick={(docId) => {
-                      setCenterView({ type: 'document', id: docId });
-                    }}
-                  />
-                ) : (
-                  <DebateCanvas
-                    ideaId={activeIdea.id}
-                    userId={user!.id}
-                    completedAgents={completedAgents}
-                    documents={documents.filter(d => d.status === 'complete' || d.status === 'reviewed').map(d => ({
-                      agent: d.agent,
-                      title: d.title,
-                      content: d.content,
-                    }))}
-                    onDebateComplete={handleDebateComplete}
-                  />
-                )}
+                <AgentChat
+                  ideaId={activeIdea.id}
+                  agent={activeAgent}
+                  context={documents.filter(d => d.status === 'complete').map(d => `## ${d.title}\n\n${d.content}`).join('\n\n')}
+                  messages={agentMessages[activeAgent] || []}
+                  onMessagesChange={(msgs) => handleMessagesChange(activeAgent, msgs)}
+                  onReadyToAdvance={() => toast.info('Agent is ready to advance. Click "Next Agent" to proceed.')}
+                />
               </div>
             </div>
 
-            {/* Center canvas */}
+            {/* Center: tabs for Activity / Docs / Debates */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              {centerView.type === 'document' && (
-                <div className="flex-shrink-0 px-4 py-2 border-b border-border/40 bg-card/30">
+              {/* Center tabs */}
+              <div className="flex-shrink-0 flex border-b border-border/40 bg-card/30">
+                {([
+                  { id: 'activity' as CenterTab, label: 'Activity', icon: Sparkles },
+                  { id: 'docs' as CenterTab, label: 'Documents', icon: FileText, count: documents.filter(d => d.status === 'complete' || d.status === 'reviewed').length },
+                  { id: 'debates' as CenterTab, label: 'Debates', icon: Users, count: completedDebates.size },
+                ]).map(tab => (
                   <button
-                    onClick={() => setCenterView({ type: 'activity' })}
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    key={tab.id}
+                    onClick={() => { setCenterTab(tab.id); setViewingDocId(null); }}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-[11px] font-medium transition-colors ${
+                      centerTab === tab.id
+                        ? 'text-primary border-b-2 border-primary bg-primary/5'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
                   >
-                    <ArrowLeft className="w-3 h-3" />
-                    Back to Activity
+                    <tab.icon className="w-3 h-3" />
+                    {tab.label}
+                    {tab.count !== undefined && tab.count > 0 && (
+                      <span className="text-[8px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{tab.count}</span>
+                    )}
                   </button>
-                </div>
-              )}
+                ))}
+              </div>
+
+              {/* Center content */}
               <div className="flex-1 overflow-hidden">
-                <CenterCanvas
-                  view={centerView}
-                  documents={documents}
-                  activityFeed={activityFeed}
-                  onDocumentUpdate={handleDocumentUpdate}
-                  generating={generating}
-                />
+                {centerTab === 'activity' && (
+                  <div className="h-full flex flex-col">
+                    <div className="flex-1 overflow-y-auto">
+                      <AgentActivityFeed events={activityFeed} />
+                    </div>
+                    {generating && (
+                      <div className="flex-shrink-0 px-4 py-2 border-t border-border/40 bg-card/30 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                        <span className="text-[10px] text-primary font-medium">Agents working...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {centerTab === 'docs' && !viewingDoc && (
+                  <div className="h-full overflow-y-auto">
+                    <DocumentPanel
+                      documents={documents}
+                      activePhase={activeAgent}
+                      onDocumentUpdate={handleDocumentUpdate}
+                      onDocumentClick={(docId) => setViewingDocId(docId)}
+                    />
+                  </div>
+                )}
+
+                {centerTab === 'docs' && viewingDoc && (
+                  <div className="h-full flex flex-col">
+                    <div className="flex-shrink-0 px-4 py-2 border-b border-border/40 bg-card/30">
+                      <button
+                        onClick={() => setViewingDocId(null)}
+                        className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <ArrowLeft className="w-3 h-3" />
+                        Back to Documents
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <DocumentViewer document={viewingDoc} onUpdate={handleDocumentUpdate} />
+                    </div>
+                  </div>
+                )}
+
+                {centerTab === 'debates' && (
+                  <div className="h-full overflow-hidden">
+                    <DebateCanvas
+                      ideaId={activeIdea.id}
+                      userId={user!.id}
+                      completedAgents={completedAgents}
+                      documents={documents.filter(d => d.status === 'complete' || d.status === 'reviewed').map(d => ({
+                        agent: d.agent,
+                        title: d.title,
+                        content: d.content,
+                      }))}
+                      onDebateComplete={handleDebateComplete}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -77,45 +77,56 @@ const SharedContext = () => {
     ? [data.file!]
     : data.index?.map(i => ({ ...i, ...(data.files?.[i.slug] || {}) })) as SharedFile[] || [];
 
+  // Calculate line numbers for the jump index
+  let lineCounter = 1;
+  const fileLineMap: { slug: string; title: string; startLine: number; endLine: number }[] = [];
+  files.forEach(f => {
+    const start = lineCounter;
+    const contentLines = (f.content || '').split('\n').length;
+    const end = start + contentLines - 1;
+    fileLineMap.push({ slug: f.slug, title: f.title, startLine: start, endLine: end });
+    lineCounter = end + 2; // +1 for separator
+  });
+
   return (
     <div className="min-h-screen bg-[#0a0e14] text-zinc-300 font-mono">
       {/* Header */}
-      <header className="border-b border-zinc-800/50 px-6 py-5">
+      <header className="border-b border-zinc-800/50 px-6 py-4">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-2 text-cyan-400 mb-3">
-            <Terminal className="w-4 h-4" />
-            <span className="text-xs tracking-widest uppercase">Agent Context</span>
-            <span className="text-zinc-600 text-xs">v1</span>
+          <div className="flex items-center gap-2 text-cyan-400 mb-2">
+            <Terminal className="w-3.5 h-3.5" />
+            <span className="text-[10px] tracking-widest uppercase">Agent Context Payload</span>
+            <span className="text-zinc-600 text-[10px]">v1</span>
           </div>
-          <p className="text-zinc-500 text-xs leading-relaxed max-w-2xl">
-            Structured context payload for AI agents. Each section is a discrete context file — 
-            consume headings as semantic anchors. Content is authoritative unless marked otherwise.
+          <p className="text-zinc-500 text-[11px] leading-relaxed max-w-2xl">
+            Structured context for AI agents. Each section = discrete file.
+            Headings are semantic anchors. Content is authoritative.
             {isSingle
-              ? ' This link contains a single file.'
-              : ` This bundle contains ${files.length} file${files.length !== 1 ? 's' : ''}.`}
+              ? ' Single file payload.'
+              : ` Bundle: ${files.length} file${files.length !== 1 ? 's' : ''}.`}
           </p>
-          <div className="flex items-center gap-4 mt-3 text-[10px] text-zinc-600">
+          <div className="flex items-center gap-4 mt-2 text-[9px] text-zinc-700">
             <span>generated: {new Date(data.generated_at).toISOString()}</span>
             <span>format: {data.format}</span>
           </div>
         </div>
       </header>
 
-      {/* Index (aggregate only) */}
+      {/* Jump Index (aggregate only) */}
       {!isSingle && files.length > 1 && (
-        <nav className="border-b border-zinc-800/30 px-6 py-4">
+        <nav className="border-b border-zinc-800/30 px-6 py-3">
           <div className="max-w-4xl mx-auto">
-            <span className="text-[10px] uppercase tracking-widest text-zinc-600 block mb-2">Index</span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-              {files.map(f => (
+            <span className="text-[9px] uppercase tracking-widest text-zinc-600 block mb-1.5">Jump Index</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-0.5">
+              {fileLineMap.map(f => (
                 <a
                   key={f.slug}
                   href={`#${f.slug}`}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-zinc-800/40 transition-colors group"
+                  className="flex items-center gap-2 px-2 py-1 rounded hover:bg-zinc-800/40 transition-colors group"
                 >
-                  <ChevronRight className="w-3 h-3 text-zinc-700 group-hover:text-cyan-500 transition-colors" />
-                  <span className="text-xs text-zinc-400 group-hover:text-cyan-400 transition-colors">{f.title}</span>
-                  <span className="text-[10px] text-zinc-700 ml-auto">{f.category}</span>
+                  <ChevronRight className="w-2.5 h-2.5 text-zinc-700 group-hover:text-cyan-500 transition-colors" />
+                  <span className="text-[11px] text-zinc-400 group-hover:text-cyan-400 transition-colors">{f.title}</span>
+                  <span className="text-[9px] text-zinc-700 ml-auto font-mono">L{f.startLine}–{f.endLine}</span>
                 </a>
               ))}
             </div>
@@ -124,29 +135,32 @@ const SharedContext = () => {
       )}
 
       {/* Files */}
-      <main className="px-6 py-8">
-        <div className="max-w-4xl mx-auto space-y-10">
-          {files.map(f => (
-            <section key={f.slug} id={f.slug} className="scroll-mt-20">
-              <div className="flex items-center gap-3 mb-1">
-                <FileText className="w-4 h-4 text-cyan-500/60" />
-                <h2 className="text-cyan-400 text-sm font-semibold">{f.title}</h2>
+      <main className="px-6 py-6">
+        <div className="max-w-4xl mx-auto space-y-8">
+          {files.map((f, fIdx) => (
+            <section key={f.slug} id={f.slug} className="scroll-mt-16">
+              <div className="flex items-center gap-2 mb-0.5">
+                <FileText className="w-3.5 h-3.5 text-cyan-500/60" />
+                <h2 className="text-cyan-400 text-xs font-semibold">{f.title}</h2>
                 {f.version && (
-                  <span className="text-[10px] text-zinc-700 flex items-center gap-1">
-                    <Tag className="w-2.5 h-2.5" /> v{f.version}
+                  <span className="text-[9px] text-zinc-700 flex items-center gap-0.5">
+                    <Tag className="w-2 h-2" /> v{f.version}
                   </span>
+                )}
+                {fileLineMap[fIdx] && (
+                  <span className="text-[9px] text-zinc-700 ml-auto">L{fileLineMap[fIdx].startLine}–{fileLineMap[fIdx].endLine}</span>
                 )}
               </div>
               {f.description && (
-                <p className="text-zinc-600 text-xs mb-3 ml-7">{f.description}</p>
+                <p className="text-zinc-600 text-[10px] mb-2 ml-5">{f.description}</p>
               )}
               {f.updated_at && (
-                <div className="flex items-center gap-1 text-[10px] text-zinc-700 mb-3 ml-7">
-                  <Clock className="w-2.5 h-2.5" />
+                <div className="flex items-center gap-1 text-[9px] text-zinc-700 mb-2 ml-5">
+                  <Clock className="w-2 h-2" />
                   <span>{new Date(f.updated_at).toLocaleDateString()}</span>
                 </div>
               )}
-              <pre className="whitespace-pre-wrap text-sm leading-6 text-zinc-300 bg-zinc-900/40 border border-zinc-800/40 rounded-lg p-5 ml-7 overflow-x-auto">
+              <pre className="whitespace-pre-wrap text-[11px] leading-5 text-zinc-300 bg-zinc-900/40 border border-zinc-800/40 rounded-md p-4 ml-5 overflow-x-auto">
                 {f.content || '(empty)'}
               </pre>
             </section>
@@ -154,15 +168,15 @@ const SharedContext = () => {
 
           {/* Judgement Rules */}
           {data.judgement_rules && data.judgement_rules.length > 0 && (
-            <section id="judgement-rules" className="scroll-mt-20">
-              <div className="flex items-center gap-3 mb-3">
-                <FileText className="w-4 h-4 text-amber-500/60" />
-                <h2 className="text-amber-400 text-sm font-semibold">Active Judgement Rules</h2>
+            <section id="judgement-rules" className="scroll-mt-16">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-3.5 h-3.5 text-amber-500/60" />
+                <h2 className="text-amber-400 text-xs font-semibold">Active Judgement Rules</h2>
               </div>
-              <div className="space-y-2 ml-7">
+              <div className="space-y-1.5 ml-5">
                 {data.judgement_rules.map((r, i) => (
-                  <div key={i} className="bg-zinc-900/40 border border-zinc-800/40 rounded-lg p-3 text-xs">
-                    <div className="flex items-center gap-2 mb-1">
+                  <div key={i} className="bg-zinc-900/40 border border-zinc-800/40 rounded-md p-2.5 text-[10px]">
+                    <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-amber-400">{r.category}</span>
                       <span className="text-zinc-700">confidence: {r.confidence}</span>
                     </div>
@@ -176,9 +190,9 @@ const SharedContext = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-800/30 px-6 py-4 mt-12">
-        <div className="max-w-4xl mx-auto text-[10px] text-zinc-700">
-          <span>Powered by TEAiMS Agent Context System</span>
+      <footer className="border-t border-zinc-800/30 px-6 py-3 mt-8">
+        <div className="max-w-4xl mx-auto text-[9px] text-zinc-700">
+          <span>TEAiMS Agent Context System</span>
         </div>
       </footer>
     </div>

@@ -29,6 +29,35 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const AppRoutes = () => (
+  <Routes>
+    {/* Public bare route — no navbar, no auth, agent-friendly */}
+    <Route path="/share/:token" element={<SharedContext />} />
+
+    {/* All other routes get the app shell */}
+    <Route path="/*" element={
+      <AppLayout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/spec" element={<Spec />} />
+          <Route path="/crews" element={<Crews />} />
+          <Route path="/toolbox" element={<Toolbox />} />
+          <Route path="/prompts" element={<Prompts />} />
+          <Route path="/builder" element={<Builder />} />
+          <Route path="/share" element={<Share />} />
+          <Route path="/startup" element={<ProtectedRoute><Startup /></ProtectedRoute>} />
+          <Route path="/squad" element={<ProtectedRoute><Squad /></ProtectedRoute>} />
+          <Route path="/context" element={<ProtectedRoute><Context /></ProtectedRoute>} />
+          <Route path="/judgement" element={<ProtectedRoute><Judgement /></ProtectedRoute>} />
+          <Route path="/resources" element={<Toolbox />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </AppLayout>
+    } />
+  </Routes>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -36,25 +65,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AppLayout>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/spec" element={<Spec />} />
-              <Route path="/crews" element={<Crews />} />
-              <Route path="/toolbox" element={<Toolbox />} />
-              <Route path="/prompts" element={<Prompts />} />
-              <Route path="/builder" element={<Builder />} />
-              <Route path="/share" element={<Share />} />
-              <Route path="/startup" element={<ProtectedRoute><Startup /></ProtectedRoute>} />
-              <Route path="/squad" element={<ProtectedRoute><Squad /></ProtectedRoute>} />
-              <Route path="/context" element={<ProtectedRoute><Context /></ProtectedRoute>} />
-              <Route path="/judgement" element={<ProtectedRoute><Judgement /></ProtectedRoute>} />
-              <Route path="/resources" element={<Toolbox />} />
-              <Route path="/share/:token" element={<SharedContext />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AppLayout>
+          <AppRoutes />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

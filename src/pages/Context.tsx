@@ -35,12 +35,12 @@ interface ContextFile {
   updated_at: string;
 }
 
-const buildShareUrl = (token: string) => `${window.location.origin}/share/${token}`;
-
 const buildEdgeFunctionUrl = (token: string) => {
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
   return `https://${projectId}.supabase.co/functions/v1/agent-context/${token}`;
 };
+
+const buildPreviewUrl = (token: string) => `${window.location.origin}/share/${token}`;
 
 const Context = () => {
   const { user, loading } = useAuth();
@@ -56,12 +56,28 @@ const Context = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) fetchFiles();
+    if (user) {
+      fetchFiles();
+      loadAggregateToken();
+    }
   }, [user]);
 
   const fetchFiles = async () => {
     const { data } = await supabase.from('context_files').select('*').order('category').order('title');
     if (data) setFiles(data as unknown as ContextFile[]);
+  };
+
+  // Load existing aggregate token from DB so it persists across tab changes
+  const loadAggregateToken = async () => {
+    const { data } = await supabase
+      .from('share_tokens')
+      .select('token')
+      .eq('resource_type', 'context')
+      .is('resource_id', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (data?.token) setAggregateToken(data.token);
   };
 
   const initCoreFile = async (template: typeof CORE_FILES[0]) => {
@@ -109,36 +125,38 @@ const Context = () => {
 
   const copyFileLink = async (file: ContextFile, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    // Ensure file is shared first
     if (!file.is_shared) {
       await toggleShare(file);
     }
-    // Create a file-specific share token
     const { data, error } = await supabase.from('share_tokens').insert({
       resource_type: 'context_file',
       resource_id: file.id,
     }).select().single();
     if (error) { toast.error(error.message); return; }
-    const url = buildShareUrl(data.token);
+    // Copy edge function URL — directly fetchable by agents
+    const url = buildEdgeFunctionUrl(data.token);
     await navigator.clipboard.writeText(url);
     setCopiedId(file.id);
     setTimeout(() => setCopiedId(null), 2000);
-    toast.success('File link copied!');
+    toast.success('Agent-fetchable link copied!');
   };
 
   const generateAggregateUrl = async () => {
+    // Reuse existing token if we have one
+    if (aggregateToken) {
+      const url = buildEdgeFunctionUrl(aggregateToken);
+      await navigator.clipboard.writeText(url);
+      toast.success('Aggregate link copied!');
+      return;
+    }
     const { data, error } = await supabase.from('share_tokens').insert({
       resource_type: 'context',
       resource_id: null,
     }).select().single();
     if (error) { toast.error(error.message); return; }
     setAggregateToken(data.token);
-    await navigator.clipboard.writeText(buildShareUrl(data.token));
+    await navigator.clipboard.writeText(buildEdgeFunctionUrl(data.token));
     toast.success('Aggregate share link copied!');
-  };
-
-  const previewShareLink = (token: string) => {
-    window.open(buildShareUrl(token), '_blank');
   };
 
   const deleteFile = async (file: ContextFile) => {
@@ -195,21 +213,26 @@ const Context = () => {
           </div>
         </div>
 
-        {/* Aggregate share URL */}
+        {/* Aggregate share URL — always visible if token exists */}
         {aggregateToken && (
           <Card className="p-4 mb-6 bg-primary/5 border-primary/20">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Agent URL (JSON)</span>
+            </div>
             <div className="flex items-center gap-2">
-              <code className="flex-1 text-xs bg-background p-2 rounded border border-border truncate">{buildShareUrl(aggregateToken)}</code>
-              <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(buildShareUrl(aggregateToken)); toast.success('Copied'); }}>
+              <code className="flex-1 text-[11px] bg-background p-2 rounded border border-border truncate font-mono">{buildEdgeFunctionUrl(aggregateToken)}</code>
+              <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(buildEdgeFunctionUrl(aggregateToken)); toast.success('Copied'); }}>
                 <Copy className="w-4 h-4" />
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => previewShareLink(aggregateToken)}>
+              <Button size="sm" variant="ghost" onClick={() => window.open(buildPreviewUrl(aggregateToken), '_blank')} title="Preview (human-friendly view)">
+                <Eye className="w-4 h-4" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => window.open(buildEdgeFunctionUrl(aggregateToken), '_blank')} title="Raw JSON (agent-friendly)">
                 <ExternalLink className="w-4 h-4" />
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Aggregated link — includes all {sharedCount} file{sharedCount !== 1 ? 's' : ''} marked as shared. 
-              Use the toggle on each file to include/exclude.
+            <p className="text-[10px] text-muted-foreground mt-2">
+              Includes all {sharedCount} shared file{sharedCount !== 1 ? 's' : ''}. Agents fetch this URL directly — returns structured JSON.
             </p>
           </Card>
         )}
@@ -236,7 +259,6 @@ const Context = () => {
                       </span>
                     </button>
                     <div className="flex items-center gap-1 pr-2">
-                      {/* Share toggle */}
                       <button
                         onClick={(e) => toggleShare(file, e)}
                         className="p-1 rounded hover:bg-background/50 transition-colors"
@@ -246,11 +268,10 @@ const Context = () => {
                           ? <ToggleRight className="w-4 h-4 text-primary" />
                           : <ToggleLeft className="w-4 h-4 text-muted-foreground" />}
                       </button>
-                      {/* Copy file link */}
                       <button
                         onClick={(e) => copyFileLink(file, e)}
                         className="p-1 rounded hover:bg-background/50 transition-colors"
-                        title="Copy link to this file"
+                        title="Copy agent-fetchable link"
                       >
                         {copiedId === file.id
                           ? <Check className="w-3.5 h-3.5 text-green-500" />
