@@ -51,6 +51,7 @@ const App = () => (
               <Route path="/context" element={<ProtectedRoute><Context /></ProtectedRoute>} />
               <Route path="/judgement" element={<ProtectedRoute><Judgement /></ProtectedRoute>} />
               <Route path="/resources" element={<Toolbox />} />
+              <Route path="/share/:token" element={<SharedContext />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
