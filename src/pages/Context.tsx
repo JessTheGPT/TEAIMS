@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { FileText, Plus, Save, Share2, Eye, Edit3, Trash2, Copy, Check, Loader2 } from 'lucide-react';
+import { FileText, Plus, Save, Share2, Eye, Edit3, Trash2, Copy, Check, Loader2, Link, ExternalLink, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,6 +35,13 @@ interface ContextFile {
   updated_at: string;
 }
 
+const buildShareUrl = (token: string) => `${window.location.origin}/share/${token}`;
+
+const buildEdgeFunctionUrl = (token: string) => {
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+  return `https://${projectId}.supabase.co/functions/v1/agent-context/${token}`;
+};
+
 const Context = () => {
   const { user, loading } = useAuth();
   const [files, setFiles] = useState<ContextFile[]>([]);
@@ -42,11 +49,11 @@ const Context = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [saving, setSaving] = useState(false);
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [aggregateToken, setAggregateToken] = useState<string | null>(null);
   const [showNewFile, setShowNewFile] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newSlug, setNewSlug] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) fetchFiles();
@@ -88,32 +95,50 @@ const Context = () => {
     toast.success('Saved');
   };
 
-  const toggleShare = async (file: ContextFile) => {
+  const toggleShare = async (file: ContextFile, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const { error } = await supabase.from('context_files')
       .update({ is_shared: !file.is_shared })
       .eq('id', file.id);
     if (error) { toast.error(error.message); return; }
-    setFiles(prev => prev.map(f => f.id === file.id ? { ...f, is_shared: !f.is_shared } : f));
-    if (activeFile?.id === file.id) setActiveFile({ ...file, is_shared: !file.is_shared });
-    toast.success(file.is_shared ? 'File is now private' : 'File is now shared');
+    const updated = { ...file, is_shared: !file.is_shared };
+    setFiles(prev => prev.map(f => f.id === file.id ? updated : f));
+    if (activeFile?.id === file.id) setActiveFile(updated);
+    toast.success(file.is_shared ? 'File excluded from sharing' : 'File included in sharing');
   };
 
-  const generateShareUrl = async () => {
+  const copyFileLink = async (file: ContextFile, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    // Ensure file is shared first
+    if (!file.is_shared) {
+      await toggleShare(file);
+    }
+    // Create a file-specific share token
+    const { data, error } = await supabase.from('share_tokens').insert({
+      resource_type: 'context_file',
+      resource_id: file.id,
+    }).select().single();
+    if (error) { toast.error(error.message); return; }
+    const url = buildShareUrl(data.token);
+    await navigator.clipboard.writeText(url);
+    setCopiedId(file.id);
+    setTimeout(() => setCopiedId(null), 2000);
+    toast.success('File link copied!');
+  };
+
+  const generateAggregateUrl = async () => {
     const { data, error } = await supabase.from('share_tokens').insert({
       resource_type: 'context',
       resource_id: null,
     }).select().single();
     if (error) { toast.error(error.message); return; }
-    const url = `${window.location.origin}/api/agent-context/${data.token}`;
-    setShareUrl(url);
+    setAggregateToken(data.token);
+    await navigator.clipboard.writeText(buildShareUrl(data.token));
+    toast.success('Aggregate share link copied!');
   };
 
-  const copyUrl = () => {
-    if (shareUrl) {
-      navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const previewShareLink = (token: string) => {
+    window.open(buildShareUrl(token), '_blank');
   };
 
   const deleteFile = async (file: ContextFile) => {
@@ -149,12 +174,13 @@ const Context = () => {
 
   const existingSlugs = files.map(f => f.slug);
   const uninitialized = CORE_FILES.filter(c => !existingSlugs.includes(c.slug));
+  const sharedCount = files.filter(f => f.is_shared).length;
 
   return (
     <div className="min-h-screen pt-16 bg-background">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Agent Context Files</h1>
             <p className="text-sm text-muted-foreground mt-1">Your personal agent configuration — identity, skills, judgement, communication style</p>
@@ -163,53 +189,80 @@ const Context = () => {
             <Button variant="outline" size="sm" onClick={() => setShowNewFile(true)} className="gap-1.5">
               <Plus className="w-3.5 h-3.5" /> Custom File
             </Button>
-            <Button variant="outline" size="sm" onClick={generateShareUrl} className="gap-1.5">
-              <Share2 className="w-3.5 h-3.5" /> Share Context
+            <Button variant="outline" size="sm" onClick={generateAggregateUrl} className="gap-1.5">
+              <Share2 className="w-3.5 h-3.5" /> Share All ({sharedCount})
             </Button>
           </div>
         </div>
 
-        {/* Share URL */}
-        {shareUrl && (
+        {/* Aggregate share URL */}
+        {aggregateToken && (
           <Card className="p-4 mb-6 bg-primary/5 border-primary/20">
-            <div className="flex items-center gap-3">
-              <code className="flex-1 text-xs bg-background p-2 rounded border border-border truncate">{shareUrl}</code>
-              <Button size="sm" variant="ghost" onClick={copyUrl}>
-                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs bg-background p-2 rounded border border-border truncate">{buildShareUrl(aggregateToken)}</code>
+              <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(buildShareUrl(aggregateToken)); toast.success('Copied'); }}>
+                <Copy className="w-4 h-4" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => previewShareLink(aggregateToken)}>
+                <ExternalLink className="w-4 h-4" />
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Share this URL with AI agents. Only files marked as "shared" will be visible.</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Aggregated link — includes all {sharedCount} file{sharedCount !== 1 ? 's' : ''} marked as shared. 
+              Use the toggle on each file to include/exclude.
+            </p>
           </Card>
         )}
 
         <div className="grid grid-cols-12 gap-6">
           {/* Sidebar */}
           <div className="col-span-4 space-y-4">
-            {/* Existing files */}
             {files.length > 0 && (
               <div className="space-y-1">
                 <span className="text-xs uppercase tracking-wider text-muted-foreground px-2">Your Files</span>
                 {files.map(file => (
-                  <button
+                  <div
                     key={file.id}
-                    onClick={() => { setActiveFile(file); setIsEditing(false); }}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors flex items-center justify-between group
-                      ${activeFile?.id === file.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground'}`}
+                    className={`flex items-center rounded-lg transition-colors group
+                      ${activeFile?.id === file.id ? 'bg-primary/10' : 'hover:bg-muted'}`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="w-4 h-4 shrink-0" />
-                      <span className="text-sm font-medium truncate">{file.title}</span>
+                    <button
+                      onClick={() => { setActiveFile(file); setIsEditing(false); }}
+                      className="flex-1 text-left px-3 py-2.5 flex items-center gap-2 min-w-0"
+                    >
+                      <FileText className={`w-4 h-4 shrink-0 ${activeFile?.id === file.id ? 'text-primary' : ''}`} />
+                      <span className={`text-sm font-medium truncate ${activeFile?.id === file.id ? 'text-primary' : 'text-foreground'}`}>
+                        {file.title}
+                      </span>
+                    </button>
+                    <div className="flex items-center gap-1 pr-2">
+                      {/* Share toggle */}
+                      <button
+                        onClick={(e) => toggleShare(file, e)}
+                        className="p-1 rounded hover:bg-background/50 transition-colors"
+                        title={file.is_shared ? 'Included in sharing — click to exclude' : 'Excluded from sharing — click to include'}
+                      >
+                        {file.is_shared
+                          ? <ToggleRight className="w-4 h-4 text-primary" />
+                          : <ToggleLeft className="w-4 h-4 text-muted-foreground" />}
+                      </button>
+                      {/* Copy file link */}
+                      <button
+                        onClick={(e) => copyFileLink(file, e)}
+                        className="p-1 rounded hover:bg-background/50 transition-colors"
+                        title="Copy link to this file"
+                      >
+                        {copiedId === file.id
+                          ? <Check className="w-3.5 h-3.5 text-green-500" />
+                          : <Link className="w-3.5 h-3.5 text-muted-foreground" />}
+                      </button>
+                      <span className="text-[10px] text-muted-foreground ml-1">v{file.version}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {file.is_shared && <Badge variant="outline" className="text-[10px] px-1.5 py-0">shared</Badge>}
-                      <span className="text-[10px] text-muted-foreground">v{file.version}</span>
-                    </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
 
-            {/* Uninitialized core files */}
             {uninitialized.length > 0 && (
               <div className="space-y-1">
                 <span className="text-xs uppercase tracking-wider text-muted-foreground px-2">Available Templates</span>
@@ -244,11 +297,11 @@ const Context = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button size="sm" variant="ghost" onClick={() => toggleShare(activeFile)}>
-                      <Share2 className={`w-3.5 h-3.5 ${activeFile.is_shared ? 'text-primary' : ''}`} />
-                    </Button>
+                    <Badge variant={activeFile.is_shared ? 'default' : 'outline'} className="text-[10px] px-2 py-0 cursor-pointer" onClick={() => toggleShare(activeFile)}>
+                      {activeFile.is_shared ? 'shared' : 'private'}
+                    </Badge>
                     {isEditing ? (
-                      <Button size="sm" onClick={saveFile} disabled={saving} className="gap-1.5">
+                      <Button size="sm" onClick={saveFile} disabled={saving} className="gap-1.5 ml-2">
                         {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                         Save
                       </Button>
