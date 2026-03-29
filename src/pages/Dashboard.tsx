@@ -10,13 +10,18 @@ import {
   Zap,
   Layers,
   Shield,
-  Bot
+  Bot,
+  FileText,
+  MessageSquare,
+  Scale
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({ crews: 0, tools: 0, prompts: 0, docs: 0 });
+  const { user } = useAuth();
+  const [stats, setStats] = useState({ crews: 0, tools: 0, prompts: 0, docs: 0, ideas: 0, documents: 0, contextFiles: 0, rules: 0 });
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -26,15 +31,34 @@ const Dashboard = () => {
         supabase.from('prompt_templates').select('id', { count: 'exact', head: true }),
         supabase.from('context_docs').select('id', { count: 'exact', head: true }),
       ]);
+
+      let ideas = 0, documents = 0, contextFiles = 0, rules = 0;
+      if (user) {
+        const [ideasR, docsR, ctxR, rulesR] = await Promise.all([
+          supabase.from('startup_ideas').select('id', { count: 'exact', head: true }),
+          supabase.from('idea_documents').select('id', { count: 'exact', head: true }),
+          supabase.from('context_files').select('id', { count: 'exact', head: true }).neq('category', 'api_keys'),
+          supabase.from('judgement_rules').select('id', { count: 'exact', head: true }),
+        ]);
+        ideas = ideasR.count || 0;
+        documents = docsR.count || 0;
+        contextFiles = ctxR.count || 0;
+        rules = rulesR.count || 0;
+      }
+
       setStats({
-        crews: teams.count || 0,
+        crews: (teams.count || 0) + 2, // Include built-in Startup + Squad crews
         tools: tools.count || 0,
         prompts: prompts.count || 0,
         docs: docs.count || 0,
+        ideas,
+        documents,
+        contextFiles,
+        rules,
       });
     };
     fetchStats();
-  }, []);
+  }, [user]);
 
   const sections = [
     {
