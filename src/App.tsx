@@ -17,6 +17,7 @@ import Squad from "./pages/Squad";
 import Context from "./pages/Context";
 import Judgement from "./pages/Judgement";
 import Auth from "./pages/Auth";
+import Settings from "./pages/Settings";
 import SharedContext from "./pages/SharedContext";
 import NotFound from "./pages/NotFound";
 
