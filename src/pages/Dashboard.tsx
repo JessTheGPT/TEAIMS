@@ -154,7 +154,7 @@ const Dashboard = () => {
       {/* Main Grid */}
       <div className="max-w-6xl mx-auto px-4 pb-20 -mt-4">
         {/* Stats bar */}
-        <div className="grid grid-cols-4 gap-px bg-border/40 rounded overflow-hidden mb-8">
+        <div className="grid grid-cols-4 gap-px bg-border/40 rounded overflow-hidden mb-4">
           {[
             { label: 'Crews', value: stats.crews, icon: Boxes },
             { label: 'Tools', value: stats.tools, icon: Wrench },
@@ -170,6 +170,26 @@ const Dashboard = () => {
             </div>
           ))}
         </div>
+
+        {/* User stats */}
+        {user && (
+          <div className="grid grid-cols-4 gap-px bg-border/40 rounded overflow-hidden mb-8">
+            {[
+              { label: 'Ideas', value: stats.ideas, icon: Zap },
+              { label: 'Generated', value: stats.documents, icon: FileText },
+              { label: 'Context', value: stats.contextFiles, icon: MessageSquare },
+              { label: 'Rules', value: stats.rules, icon: Scale },
+            ].map((s) => (
+              <div key={s.label} className="bg-card/80 px-4 py-3 flex items-center gap-3">
+                <s.icon className="w-4 h-4 text-primary/60" />
+                <div>
+                  <div className="text-lg font-semibold text-foreground tabular-nums">{s.value}</div>
+                  <div className="text-xs text-muted-foreground">{s.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Section cards */}
         <div className="grid md:grid-cols-2 gap-4 mb-10">
