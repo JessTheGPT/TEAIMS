@@ -267,6 +267,37 @@ const Squad = () => {
             status: 'complete',
             user_id: user.id,
           });
+
+          // Surface implicit judgements to the framework
+          const judgementPatterns = [
+            /(?:decided|chose|selected|prioritized|recommended)\s+(.{10,80})/gi,
+            /(?:trade-?off|compromise|instead of)\s+(.{10,80})/gi,
+          ];
+          const decisions: string[] = [];
+          for (const pattern of judgementPatterns) {
+            let match;
+            while ((match = pattern.exec(content)) !== null && decisions.length < 3) {
+              decisions.push(match[0].trim());
+            }
+          }
+          if (decisions.length > 0) {
+            const judgementInserts = decisions.map(d => ({
+              user_id: user.id,
+              agent: agentId,
+              category: agent.role || 'general',
+              question: `${agent.name}: ${d}`,
+              context: `Auto-surfaced from ${docTitle} for idea "${idea.title}"`,
+              status: 'pending',
+              confidence_level: 'medium',
+            }));
+            await supabase.from('judgement_entries').insert(judgementInserts);
+            addActivity({
+              type: 'doc_complete' as const,
+              fromAgent: agentId,
+              content: `⚖️ ${decisions.length} judgement(s) surfaced from ${agent.name}`,
+            });
+          }
+
           addActivity({
             type: 'doc_complete',
             fromAgent: agentId,
