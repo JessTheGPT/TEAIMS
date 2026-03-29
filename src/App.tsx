@@ -51,6 +51,7 @@ const AppRoutes = () => (
           <Route path="/squad" element={<ProtectedRoute><Squad /></ProtectedRoute>} />
           <Route path="/context" element={<ProtectedRoute><Context /></ProtectedRoute>} />
           <Route path="/judgement" element={<ProtectedRoute><Judgement /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/resources" element={<Toolbox />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

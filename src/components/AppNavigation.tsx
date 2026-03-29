@@ -138,10 +138,7 @@ const AppNavigation = () => {
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/context" className="text-xs">Context Files</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/judgement" className="text-xs">Judgement Rules</Link>
+                      <Link to="/settings" className="text-xs">Settings</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut} className="text-xs text-destructive">
