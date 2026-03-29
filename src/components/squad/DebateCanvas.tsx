@@ -291,7 +291,7 @@ const DebateCanvas = ({ ideaId, userId, completedAgents, documents, onDebateComp
                                         <Badge variant="destructive" className="text-[7px] px-1 py-0 h-3">RED LINE</Badge>
                                       )}
                                     </div>
-                                    <div className="text-[10px] text-foreground/80 prose prose-xs max-w-none leading-relaxed [&_p]:mb-1 [&_p:last-child]:mb-0">
+                                    <div className="text-[11px] text-foreground/90 leading-relaxed [&_p]:mb-1 [&_p:last-child]:mb-0">
                                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                                     </div>
                                   </div>
