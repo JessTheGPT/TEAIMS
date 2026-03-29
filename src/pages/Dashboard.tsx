@@ -10,13 +10,18 @@ import {
   Zap,
   Layers,
   Shield,
-  Bot
+  Bot,
+  FileText,
+  MessageSquare,
+  Scale
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({ crews: 0, tools: 0, prompts: 0, docs: 0 });
+  const { user } = useAuth();
+  const [stats, setStats] = useState({ crews: 0, tools: 0, prompts: 0, docs: 0, ideas: 0, documents: 0, contextFiles: 0, rules: 0 });
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -26,15 +31,34 @@ const Dashboard = () => {
         supabase.from('prompt_templates').select('id', { count: 'exact', head: true }),
         supabase.from('context_docs').select('id', { count: 'exact', head: true }),
       ]);
+
+      let ideas = 0, documents = 0, contextFiles = 0, rules = 0;
+      if (user) {
+        const [ideasR, docsR, ctxR, rulesR] = await Promise.all([
+          supabase.from('startup_ideas').select('id', { count: 'exact', head: true }),
+          supabase.from('idea_documents').select('id', { count: 'exact', head: true }),
+          supabase.from('context_files').select('id', { count: 'exact', head: true }).neq('category', 'api_keys'),
+          supabase.from('judgement_rules').select('id', { count: 'exact', head: true }),
+        ]);
+        ideas = ideasR.count || 0;
+        documents = docsR.count || 0;
+        contextFiles = ctxR.count || 0;
+        rules = rulesR.count || 0;
+      }
+
       setStats({
-        crews: teams.count || 0,
+        crews: (teams.count || 0) + 2, // Include built-in Startup + Squad crews
         tools: tools.count || 0,
         prompts: prompts.count || 0,
         docs: docs.count || 0,
+        ideas,
+        documents,
+        contextFiles,
+        rules,
       });
     };
     fetchStats();
-  }, []);
+  }, [user]);
 
   const sections = [
     {
@@ -130,7 +154,7 @@ const Dashboard = () => {
       {/* Main Grid */}
       <div className="max-w-6xl mx-auto px-4 pb-20 -mt-4">
         {/* Stats bar */}
-        <div className="grid grid-cols-4 gap-px bg-border/40 rounded overflow-hidden mb-8">
+        <div className="grid grid-cols-4 gap-px bg-border/40 rounded overflow-hidden mb-4">
           {[
             { label: 'Crews', value: stats.crews, icon: Boxes },
             { label: 'Tools', value: stats.tools, icon: Wrench },
@@ -146,6 +170,26 @@ const Dashboard = () => {
             </div>
           ))}
         </div>
+
+        {/* User stats */}
+        {user && (
+          <div className="grid grid-cols-4 gap-px bg-border/40 rounded overflow-hidden mb-8">
+            {[
+              { label: 'Ideas', value: stats.ideas, icon: Zap },
+              { label: 'Generated', value: stats.documents, icon: FileText },
+              { label: 'Context', value: stats.contextFiles, icon: MessageSquare },
+              { label: 'Rules', value: stats.rules, icon: Scale },
+            ].map((s) => (
+              <div key={s.label} className="bg-card/80 px-4 py-3 flex items-center gap-3">
+                <s.icon className="w-4 h-4 text-primary/60" />
+                <div>
+                  <div className="text-lg font-semibold text-foreground tabular-nums">{s.value}</div>
+                  <div className="text-xs text-muted-foreground">{s.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Section cards */}
         <div className="grid md:grid-cols-2 gap-4 mb-10">

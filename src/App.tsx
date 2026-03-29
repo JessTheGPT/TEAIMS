@@ -17,6 +17,7 @@ import Squad from "./pages/Squad";
 import Context from "./pages/Context";
 import Judgement from "./pages/Judgement";
 import Auth from "./pages/Auth";
+import Settings from "./pages/Settings";
 import SharedContext from "./pages/SharedContext";
 import NotFound from "./pages/NotFound";
 
@@ -50,6 +51,7 @@ const AppRoutes = () => (
           <Route path="/squad" element={<ProtectedRoute><Squad /></ProtectedRoute>} />
           <Route path="/context" element={<ProtectedRoute><Context /></ProtectedRoute>} />
           <Route path="/judgement" element={<ProtectedRoute><Judgement /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/resources" element={<Toolbox />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
