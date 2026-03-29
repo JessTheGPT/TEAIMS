@@ -30,8 +30,13 @@ const navItems = [
       { label: 'Spec', href: '/spec' },
     ],
   },
-  { label: 'Context', href: '/context' },
-  { label: 'Judgement', href: '/judgement' },
+  {
+    label: 'Personal',
+    children: [
+      { label: 'Context Files', href: '/context' },
+      { label: 'Judgement', href: '/judgement' },
+    ],
+  },
 ];
 
 const AppNavigation = () => {

@@ -57,7 +57,7 @@ const DocumentViewer = ({ document, onUpdate }: DocumentViewerProps) => {
             className="min-h-full bg-secondary/20 font-mono text-sm border-border/30 resize-none"
           />
         ) : (
-          <div className="prose prose-invert prose-sm max-w-none text-foreground/85 leading-relaxed whitespace-pre-wrap">
+          <div className="prose prose-invert prose-xs max-w-none text-foreground/85 text-[13px] leading-relaxed whitespace-pre-wrap">
             {document.content || (
               <div className="text-center text-muted-foreground py-12">
                 <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />

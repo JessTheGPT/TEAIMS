@@ -110,8 +110,8 @@ const DebateCanvas = ({ ideaId, userId, completedAgents, documents, onDebateComp
         const flexList = stance.flexAreas.map(f => `- 🟢 ${f.area}: ${f.description}`).join('\n');
 
         const debateSystemPrompt = debate.isOpenForum
-          ? `You are ${agent.name} (${agent.role}) in a FINAL ALIGNMENT FORUM.\n\nYour RED LINES:\n${redLinesList}\n\nYour FLEXIBLE AREAS:\n${flexList}\n\nRULES:\n1. State your position clearly\n2. Flag ANY red line violations\n3. Acknowledge compromise areas\n4. Signal ALIGNMENT_REACHED if majority aligns and no red lines crossed\n5. State RED_LINE_VIOLATED if one is crossed\n6. Keep to 2-3 paragraphs\n\nTopic: ${debate.topic}\n${prevMessages ? `\nPrevious:\n${prevMessages}` : ''}`
-          : `You are ${agent.name} (${agent.role}) in a structured debate on: "${debate.topic}"\n\nYour RED LINES:\n${redLinesList}\n\nYour FLEXIBLE AREAS:\n${flexList}\n\nRULES:\n1. Round ${round} of ${debate.rounds}\n2. ${i === 0 ? 'Open with your position' : 'Respond to previous arguments'}\n3. Say RED_LINE_VIOLATED if a red line is crossed\n4. Propose specific compromises where possible\n5. Stay in character\n6. Keep to 2-3 paragraphs\n7. Final round: state ALIGN, CONCEDE, or BLOCK\n\nTopic: ${debate.topic}\nTrigger: ${debate.trigger}\n${prevMessages ? `\nPrevious:\n${prevMessages}` : ''}`;
+          ? `You are ${agent.name} (${agent.role}) in a FINAL ALIGNMENT FORUM.\n\nYour RED LINES:\n${redLinesList}\n\nYour FLEXIBLE AREAS:\n${flexList}\n\nRULES:\n1. State your position clearly and concisely\n2. Flag ANY red line violations\n3. Acknowledge compromise areas\n4. Signal ALIGNMENT_REACHED if majority aligns and no red lines crossed\n5. State RED_LINE_VIOLATED if one is crossed\n6. IMPORTANT: Keep responses to 3-5 sentences MAX. Be direct and conversational, not academic.\n\nTopic: ${debate.topic}\n${prevMessages ? `\nPrevious:\n${prevMessages}` : ''}`
+          : `You are ${agent.name} (${agent.role}) in a structured debate on: "${debate.topic}"\n\nYour RED LINES:\n${redLinesList}\n\nYour FLEXIBLE AREAS:\n${flexList}\n\nRULES:\n1. Round ${round} of ${debate.rounds}\n2. ${i === 0 ? 'Open with your position' : 'Respond to previous arguments'}\n3. Say RED_LINE_VIOLATED if a red line is crossed\n4. Propose specific compromises where possible\n5. Stay in character\n6. IMPORTANT: Keep to 3-5 sentences MAX. Be conversational and direct, not long-winded.\n7. Final round: state ALIGN, CONCEDE, or BLOCK in one word then explain briefly.\n\nTopic: ${debate.topic}\nTrigger: ${debate.trigger}\n${prevMessages ? `\nPrevious:\n${prevMessages}` : ''}`;
 
         let content = '';
         const msgId = crypto.randomUUID();
@@ -291,7 +291,7 @@ const DebateCanvas = ({ ideaId, userId, completedAgents, documents, onDebateComp
                                         <Badge variant="destructive" className="text-[7px] px-1 py-0 h-3">RED LINE</Badge>
                                       )}
                                     </div>
-                                    <div className="text-[10px] text-foreground/80 prose prose-xs max-w-none leading-relaxed [&_p]:mb-1 [&_p:last-child]:mb-0">
+                                    <div className="text-[11px] text-foreground/90 leading-relaxed [&_p]:mb-1 [&_p:last-child]:mb-0">
                                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                                     </div>
                                   </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Scale, Plus, Check, X, Clock, BookOpen, Loader2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Scale, Plus, Check, X, Clock, BookOpen, Loader2, ChevronDown, ChevronRight, AlertTriangle, Pencil, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -48,6 +48,10 @@ const Judgement = () => {
   const [showAddRule, setShowAddRule] = useState(false);
   const [newRule, setNewRule] = useState({ category: '', rule: '' });
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [editingRule, setEditingRule] = useState<JudgementRule | null>(null);
+  const [editRuleText, setEditRuleText] = useState('');
+  const [editRuleCategory, setEditRuleCategory] = useState('');
+  const [editRuleConfidence, setEditRuleConfidence] = useState('');
 
   useEffect(() => {
     if (user) { fetchEntries(); fetchRules(); }
@@ -113,6 +117,40 @@ const Judgement = () => {
       next.has(cat) ? next.delete(cat) : next.add(cat);
       return next;
     });
+  };
+
+  const toggleRuleActive = async (rule: JudgementRule) => {
+    const { error } = await supabase.from('judgement_rules').update({ active: !rule.active }).eq('id', rule.id);
+    if (error) { toast.error(error.message); return; }
+    setRules(prev => prev.map(r => r.id === rule.id ? { ...r, active: !r.active } : r));
+    toast.success(rule.active ? 'Rule deactivated' : 'Rule activated');
+  };
+
+  const deleteRule = async (ruleId: string) => {
+    const { error } = await supabase.from('judgement_rules').delete().eq('id', ruleId);
+    if (error) { toast.error(error.message); return; }
+    setRules(prev => prev.filter(r => r.id !== ruleId));
+    toast.success('Rule deleted');
+  };
+
+  const startEditRule = (rule: JudgementRule) => {
+    setEditingRule(rule);
+    setEditRuleText(rule.rule);
+    setEditRuleCategory(rule.category);
+    setEditRuleConfidence(rule.confidence);
+  };
+
+  const saveEditRule = async () => {
+    if (!editingRule || !editRuleText.trim()) return;
+    const { error } = await supabase.from('judgement_rules').update({
+      rule: editRuleText,
+      category: editRuleCategory,
+      confidence: editRuleConfidence,
+    }).eq('id', editingRule.id);
+    if (error) { toast.error(error.message); return; }
+    setRules(prev => prev.map(r => r.id === editingRule.id ? { ...r, rule: editRuleText, category: editRuleCategory, confidence: editRuleConfidence } : r));
+    setEditingRule(null);
+    toast.success('Rule updated');
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
@@ -249,12 +287,23 @@ const Judgement = () => {
                       {rules.filter(r => r.category === cat).map(rule => (
                         <Card key={rule.id} className="p-3">
                           <p className="text-sm text-foreground">{rule.rule}</p>
-                          <div className="flex items-center gap-2 mt-2">
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
                             <Badge variant="outline" className="text-[10px]">{rule.confidence} confidence</Badge>
                             <span className="text-[10px] text-muted-foreground">Applied {rule.times_applied}x</span>
                             <Badge variant={rule.active ? 'default' : 'secondary'} className="text-[10px]">
                               {rule.active ? 'Active' : 'Inactive'}
                             </Badge>
+                            <div className="ml-auto flex items-center gap-1">
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => toggleRuleActive(rule)} title={rule.active ? 'Deactivate' : 'Activate'}>
+                                {rule.active ? <ToggleRight className="w-3.5 h-3.5 text-green-500" /> : <ToggleLeft className="w-3.5 h-3.5 text-muted-foreground" />}
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => startEditRule(rule)} title="Edit">
+                                <Pencil className="w-3 h-3 text-muted-foreground" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => deleteRule(rule.id)} title="Delete">
+                                <Trash2 className="w-3 h-3 text-destructive" />
+                              </Button>
+                            </div>
                           </div>
                         </Card>
                       ))}
@@ -320,6 +369,29 @@ const Judgement = () => {
             <Input placeholder="Category (e.g. scope, legal, design)" value={newRule.category} onChange={e => setNewRule(p => ({ ...p, category: e.target.value }))} />
             <Textarea placeholder="Rule description..." value={newRule.rule} onChange={e => setNewRule(p => ({ ...p, rule: e.target.value }))} />
             <Button onClick={addManualRule} className="w-full">Add Rule</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit rule dialog */}
+      <Dialog open={!!editingRule} onOpenChange={() => setEditingRule(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Rule</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-2">
+            <Input placeholder="Category" value={editRuleCategory} onChange={e => setEditRuleCategory(e.target.value)} />
+            <Textarea placeholder="Rule description..." value={editRuleText} onChange={e => setEditRuleText(e.target.value)} className="min-h-[100px]" />
+            <div className="flex gap-2">
+              {['low', 'medium', 'high'].map(c => (
+                <button
+                  key={c}
+                  onClick={() => setEditRuleConfidence(c)}
+                  className={`flex-1 px-3 py-1.5 text-xs rounded-md border transition-colors ${editRuleConfidence === c ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <Button onClick={saveEditRule} className="w-full">Save Changes</Button>
           </div>
         </DialogContent>
       </Dialog>
