@@ -2,7 +2,7 @@
 
 > **Ship entire startups with orchestrated AI agent teams.**  
 > From raw idea → market validation → architecture → design → implementation → security audit → growth strategy → compliance → launch.  
-> With adversarial debates, red-line enforcement, human-in-the-loop judgement, and persistent decision intelligence.
+> With adversarial debates, red-line enforcement, human-in-the-loop judgement, persistent decision intelligence, and integrated external tooling.
 
 ---
 
@@ -14,10 +14,14 @@
 - [Adversarial Debate System](#adversarial-debate-system)
 - [Judgement Framework](#judgement-framework)
 - [Context File System](#context-file-system)
+- [Settings & Secret Management](#settings--secret-management)
+- [External Integrations](#external-integrations)
+- [Sharing & Agent-Accessible Endpoints](#sharing--agent-accessible-endpoints)
 - [Technical Implementation](#technical-implementation)
 - [Design Philosophy](#design-philosophy)
 - [Decision Log](#decision-log)
 - [Future State](#future-state)
+- [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
 
 ---
@@ -34,6 +38,7 @@ Modern AI tools give you one agent with one context window. That's like running 
 - Agents **debate each other** in structured rounds before decisions are finalized
 - A **human-in-the-loop framework** captures uncertain decisions and codifies your judgement into reusable rules
 - A **context file system** stores your operating identity — Soul.md, Skills.md, Judgements.md — shareable via secure tokenized URLs
+- **Integrated external tooling** — Telegram for capturing notes on the fly, Firecrawl for deep web extraction, API key management for connecting to any service
 
 The result: AI that operates like a high-functioning team, not a single overloaded assistant.
 
@@ -42,42 +47,47 @@ The result: AI that operates like a high-functioning team, not a single overload
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        Agent Armory Frontend                           │
-│  React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · Framer     │
-│                                                                        │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐ │
-│  │ Startup  │ │  Elite 9 │ │ Context  │ │Judgement │ │  Resources   │ │
-│  │  Crew    │ │  Squad   │ │  Files   │ │Framework │ │Toolbox/Prompts│ │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └──────┬───────┘ │
-│       │             │            │             │              │         │
-├───────┼─────────────┼────────────┼─────────────┼──────────────┼─────────┤
-│       ▼             ▼            ▼             ▼              ▼         │
-│                     Lovable Cloud (Supabase)                           │
-│  ┌────────────────────────────────────────────────────────────────────┐ │
-│  │  Edge Functions (Streaming SSE)                                    │ │
-│  │  ├── startup-chat    → Agent conversation + doc generation        │ │
-│  │  ├── context         → Public context doc serving                 │ │
-│  │  └── agent-context   → Tokenized agent config endpoint            │ │
-│  ├────────────────────────────────────────────────────────────────────┤ │
-│  │  Postgres + RLS                                                    │ │
-│  │  ├── startup_ideas    (user-scoped, phase-tracked)                │ │
-│  │  ├── idea_messages    (per-agent conversation history)            │ │
-│  │  ├── idea_documents   (generated deliverables)                    │ │
-│  │  ├── debate_messages  (adversarial debate transcripts)            │ │
-│  │  ├── context_files    (Soul.md, Skills.md, etc.)                  │ │
-│  │  ├── judgement_entries (HITL decision log)                         │ │
-│  │  ├── judgement_rules   (codified decision patterns)               │ │
-│  │  ├── share_tokens     (secure URL sharing)                        │ │
-│  │  ├── agents / teams   (agent configuration)                       │ │
-│  │  ├── tools            (tool registry)                             │ │
-│  │  ├── prompt_templates (reusable prompt library)                   │ │
-│  │  └── context_docs     (public knowledge base)                     │ │
-│  └────────────────────────────────────────────────────────────────────┘ │
-│                                                                        │
-│  AI Gateway: Lovable AI (Gemini 3 Flash Preview) — streaming SSE       │
-│  Auth: Email/password with RLS on all user data                        │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Agent Armory Frontend                              │
+│  React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · Framer Motion   │
+│                                                                             │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────────┐│
+│  │ Startup  │ │  Elite 9 │ │ Context  │ │Judgement │ │  Settings/Keys     ││
+│  │  Crew    │ │  Squad   │ │  Files   │ │Framework │ │  Integrations      ││
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────────┬───────────┘│
+│       │             │            │             │                │            │
+├───────┼─────────────┼────────────┼─────────────┼────────────────┼────────────┤
+│       ▼             ▼            ▼             ▼                ▼            │
+│                       Lovable Cloud (Supabase)                              │
+│  ┌──────────────────────────────────────────────────────────────────────────┐│
+│  │  Edge Functions (Streaming SSE + REST)                                   ││
+│  │  ├── startup-chat     → Agent conversation + doc generation             ││
+│  │  ├── context          → Public context doc serving                      ││
+│  │  ├── agent-context    → Tokenized agent config endpoint                 ││
+│  │  ├── firecrawl-scrape → Single-page web extraction                      ││
+│  │  ├── firecrawl-search → Web search with optional scraping               ││
+│  │  ├── firecrawl-map    → Sitemap discovery                               ││
+│  │  └── firecrawl-crawl  → Recursive website crawl                         ││
+│  ├──────────────────────────────────────────────────────────────────────────┤│
+│  │  Postgres + RLS                                                          ││
+│  │  ├── startup_ideas     (user-scoped, phase-tracked)                     ││
+│  │  ├── idea_messages     (per-agent conversation history)                 ││
+│  │  ├── idea_documents    (generated deliverables)                         ││
+│  │  ├── debate_messages   (adversarial debate transcripts)                 ││
+│  │  ├── context_files     (Soul.md, Skills.md, API keys, etc.)             ││
+│  │  ├── judgement_entries  (HITL decision log)                              ││
+│  │  ├── judgement_rules    (codified decision patterns)                     ││
+│  │  ├── share_tokens      (secure URL sharing)                             ││
+│  │  ├── agents / teams    (agent configuration)                            ││
+│  │  ├── tools             (tool registry)                                  ││
+│  │  ├── prompt_templates  (reusable prompt library)                        ││
+│  │  └── context_docs      (public knowledge base)                          ││
+│  └──────────────────────────────────────────────────────────────────────────┘│
+│                                                                             │
+│  AI Gateway: Lovable AI (Gemini 3 Flash Preview) — streaming SSE            │
+│  Auth: Email/password with RLS on all user data                             │
+│  Connectors: Telegram Bot API · Firecrawl Web Extraction                    │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Data Flow
@@ -102,6 +112,7 @@ User Input (idea description)
      │  • Structured document     │
      │  • Persisted to DB         │
      │  • Activity feed update    │
+     │  • Judgement extraction    │
      └──────────┬─────────────────┘
                 │
                 ▼
@@ -110,6 +121,13 @@ User Input (idea description)
      │  agent completions        │
      │  Red line enforcement     │
      │  Majority alignment       │
+     └──────────┬─────────────────┘
+                │
+                ▼
+     ┌─── Judgement Extraction ──┐
+     │  Auto-detect decisions    │
+     │  Surface to HITL review   │
+     │  Codify into rules        │
      └──────────┬─────────────────┘
                 │
                 ▼
@@ -140,7 +158,7 @@ The Chief of Staff acts as the orchestrator — the user chats directly with the
 
 ### ⚡ Elite 9 Squad — 9 Agents, Sequential + Adversarial
 
-A high-fidelity, opinionated squad modeled after top-tier startup operators. Every agent has hard constraints (red lines) and areas of flexibility.
+A high-fidelity, opinionated squad modeled after top-tier startup operators. Every agent has hard constraints (red lines) and areas of flexibility. This crew operates as a **command center** — documents generate in a central canvas, debates happen in structured rounds, and the user oversees everything from a single view.
 
 | Agent | Code | Role | Red Lines | Output |
 |-------|------|------|-----------|--------|
@@ -155,6 +173,8 @@ A high-fidelity, opinionated squad modeled after top-tier startup operators. Eve
 | SRE/Ops/Legal | A9 | Compliance | Zero-downtime deploys, legal compliance, GDPR | Deployment & Compliance |
 
 Each agent auto-generates their document by consuming all prior context. The pipeline is sequential — A1 validates before A2 scopes, A2 scopes before A3 architects. This mirrors how decisions flow in a real organization: you don't architect before you've validated the market.
+
+**Auto-Judgement Extraction:** As documents are generated, the system scans for decision patterns (e.g., "prioritized X over Y", "chose A instead of B") and automatically surfaces them as pending judgement entries for human review.
 
 ---
 
@@ -213,9 +233,9 @@ When an agent detects a red line violation during debate, they explicitly flag `
 - **Red Line** — non-negotiable constraint triggered
 - **Align** — consensus reached
 
-### Design Decision: Chat Bubbles
+### Concise, Conversational Debates
 
-Debates render as alternating **chat bubbles** with left/right alignment, making it feel like watching a real conversation between team members. Each bubble shows the agent icon, name, round number, and stance badge.
+Debates are engineered for readability — agents are prompted to keep responses to 3-5 sentences, use a conversational tone, and reference each other by name. This prevents wall-of-text syndrome and makes debates feel like watching a real team conversation. Chat bubbles with left/right alignment create visual rhythm.
 
 ---
 
@@ -258,17 +278,11 @@ Confidence: High
 5. Weekly QA: review agent decisions made autonomously
 6. Refine or descope rules based on outcomes
 
-This creates a **decision intelligence layer** that grows with every interaction. Over time, agents gain higher conviction and ask fewer questions, while maintaining alignment with your values and preferences.
+**Auto-Surfacing from Agent Output:** The Elite 9 Squad automatically scans generated documents for decision patterns using regex matching. Phrases like "prioritized", "chose", "trade-off", "instead of" trigger automatic creation of pending judgement entries. This ensures no significant decision slips through without human review.
 
-### Categories
+### Editable Rules
 
-| Category | Examples |
-|----------|----------|
-| Architecture | Stack choices, scaling decisions, vendor selection |
-| Security | Auth requirements, data handling, compliance |
-| Design | Accessibility trade-offs, performance vs aesthetics |
-| Business | Pricing models, market positioning, feature priority |
-| Process | Sprint scope, review cadence, deployment strategy |
+Rules are fully editable — toggle active/inactive, update rule text, adjust confidence, and delete obsolete rules. Categories help organize by domain (Architecture, Security, Design, Business, Process).
 
 ---
 
@@ -294,15 +308,74 @@ Context files use a **dual storage model**:
 - **Database** (`context_files` table) — versioned, searchable, taggable, RLS-protected
 - **Exportable as .md** — for local use, git integration, cross-tool compatibility
 
-### Secure Sharing
+### Per-File Sharing
 
-Context files can be shared externally via tokenized URLs:
+Each file has an individual `is_shared` toggle and generates its own shareable link. This allows selective exposure — share your Skills.md publicly while keeping Soul.md private.
 
+### Aggregate Sharing
+
+A "Share All" button generates a single tokenized URL that bundles all files marked as shared, plus your active judgement rules. This creates a complete agent configuration endpoint.
+
+---
+
+## Settings & Secret Management
+
+The Settings page (`/settings`) serves as a personal secret manager:
+
+- **API Key Storage** — Save keys for OpenAI, Anthropic, Google AI, Supabase, Firecrawl, Telegram, GitHub, or custom providers
+- **Masked Display** — Keys are masked by default with show/hide toggle
+- **Provider Tagging** — Each key is tagged with its provider for easy identification
+- **Private Storage** — Keys are stored in the user's `context_files` table with `category: 'api_keys'`, fully RLS-protected
+- **Quick Links** — Direct navigation to Context Files, Judgement Rules, and Share Links
+
+This centralizes all credentials needed for autonomous agent execution in one secure, user-owned location.
+
+---
+
+## External Integrations
+
+### Telegram Bot API
+
+Connected via the Lovable connector system. Enables:
+- Sending documents and notes to a Telegram bot for quick capture
+- Future: receiving messages as a persistent feed of ideas, links, and context
+
+### Firecrawl Web Extraction
+
+Four edge functions provide full web extraction capabilities:
+
+| Function | Purpose | Use Case |
+|----------|---------|----------|
+| `firecrawl-scrape` | Extract content from a single URL | Rich context from articles, docs, competitor pages |
+| `firecrawl-search` | Web search with optional scraping | Research and competitive intelligence |
+| `firecrawl-map` | Discover all URLs on a domain | Sitemap generation, project structure mapping |
+| `firecrawl-crawl` | Recursively scrape entire sites | Deep knowledge base extraction |
+
+**Output formats:** markdown, HTML, raw HTML, links, screenshots, branding extraction, AI-generated summaries, and structured JSON extraction with custom schemas.
+
+---
+
+## Sharing & Agent-Accessible Endpoints
+
+### Tokenized URLs
+
+Every share link uses a cryptographically generated token:
 ```
-https://your-domain.com/api/agent-context/{token}
+https://your-domain.com/share/{token}           → Human-readable terminal view
+https://your-project.supabase.co/functions/v1/agent-context/{token}  → Raw JSON for agents
 ```
 
-The `agent-context` edge function returns a structured JSON payload:
+### Terminal-Style Shared View
+
+The `/share/:token` route renders outside the app shell (no navbar) in a polished dark terminal aesthetic:
+- **Summary header** with file count and generation timestamp
+- **Jump index** with line number ranges per file (e.g., `L1–L42: Soul.md`)
+- **Monospace content** with line numbers for easy agent indexing
+- **Optimized for scraping** — agents hit the page, read the summary, see the index, and know exactly which line ranges to extract
+
+### Edge Function Endpoint
+
+The `agent-context` edge function serves structured JSON:
 ```json
 {
   "context": {
@@ -325,7 +398,6 @@ The `agent-context` edge function returns a structured JSON payload:
 All agent responses use **Server-Sent Events (SSE)** via edge functions:
 
 ```typescript
-// Edge function streams response chunks
 const encoder = new TextEncoder();
 const stream = new ReadableStream({
   async start(controller) {
@@ -358,7 +430,7 @@ CREATE POLICY "Users can read own ideas"
   USING (user_id = auth.uid());
 ```
 
-Tables that are inherently public (tools, prompt_templates, context_docs) use `is_public = true` policies.
+Tables that are inherently public (tools, prompt_templates, context_docs) use `is_public = true` policies. Shared context files have an additional anon policy: `is_shared = true`.
 
 ### State Management
 
@@ -373,16 +445,19 @@ The application uses **React state** with `useCallback` memoization for agent me
 
 ```
 pages/
+  Dashboard.tsx    — Armory overview with live stats (crews, tools, ideas, docs, rules)
   Startup.tsx      — Startup Crew orchestrator (state + pipeline logic)
-  Squad.tsx        — Elite 9 orchestrator (state + debate integration)
-  Context.tsx      — Context file editor with sharing
-  Judgement.tsx     — HITL decision framework UI
+  Squad.tsx        — Elite 9 orchestrator (state + debate + judgement extraction)
+  Context.tsx      — Context file editor with per-file sharing
+  Judgement.tsx    — HITL decision framework with full CRUD on rules
+  Settings.tsx     — API key manager + quick links
+  SharedContext.tsx — Public terminal-style shared view (no auth, no navbar)
 
 components/
   startup/
     AgentChat.tsx          — Real-time chat with streaming
     DocumentPanel.tsx      — Document list with status indicators
-    DocumentViewer.tsx     — Full markdown document viewer
+    DocumentViewer.tsx     — Full markdown document viewer (prose-xs sizing)
     CenterCanvas.tsx       — Dynamic content area (activity / documents)
     PipelineFlow.tsx       — Phase-based pipeline visualization
     IdeaSelector.tsx       — Idea picker with inline rename
@@ -390,8 +465,10 @@ components/
 
   squad/
     SquadPipelineFlow.tsx        — 9-agent sequential pipeline
-    DebateCanvas.tsx              — Adversarial debate with chat bubbles
+    DebateCanvas.tsx              — Adversarial debate with chat bubbles (3-5 sentence limit)
     DebateFlowVisualization.tsx  — Pipeline + debate node overlay
+
+  AppNavigation.tsx — Hierarchical nav with Crews, Resources, Personal dropdowns
 ```
 
 ### Challenges Solved
@@ -411,6 +488,15 @@ Debates must run sequentially — agent A responds to agent B's latest message. 
 **4. Red Line Detection**  
 Red line violations are detected via keyword matching in the response (`RED_LINE_VIOLATED`). This is intentionally simple — the prompt engineering ensures agents use these exact flags. The alternative (semantic analysis of every response) would add latency and complexity without meaningful accuracy improvement.
 
+**5. Share Token Persistence**  
+Aggregate share tokens are loaded from the database on mount, ensuring they survive tab switches and page refreshes. Individual file tokens use `resource_id` linking for precise per-file access.
+
+**6. Auto-Judgement Extraction**  
+Regex pattern matching against generated document content identifies decision-making language (e.g., "prioritized", "chose", "trade-off") and automatically creates pending judgement entries. This bridges the gap between agent autonomy and human oversight.
+
+**7. Concise Debate Prompts**  
+Debate agents are system-prompted with strict length limits (3-5 sentences) and conversational tone requirements. This prevents the common LLM failure mode of verbose, repetitive debate responses.
+
 ---
 
 ## Design Philosophy
@@ -427,16 +513,22 @@ Agent Armory draws from **military operations centers** and **trading floor term
 
 ### Layout Architecture
 
-The crew pages use a **three-panel layout**:
+The crew pages use a **command center layout**:
 1. **Top:** Full-width collapsible pipeline flow (the "mission status" bar)
-2. **Left sidebar:** Tabbed panel — Chat / Documents / Debates
-3. **Center canvas:** Dynamic — activity feed or document viewer
+2. **Left sidebar:** Agent chat with quick-switch icons
+3. **Center canvas:** Tabbed — Documents / Debates / Activity
+4. **Right sidebar:** Contextual panels (activity feed, settings)
 
 This gives maximum breathing room to the content that matters (documents and conversations) while keeping navigation and status compact.
 
-### Why No Org Chart (Yet)
+### Navigation Structure
 
-The Startup Crew is flat — Chief of Staff delegates to parallel specialists. The Elite 9 is sequential — it's a pipeline, not a hierarchy. An org chart implies reporting structures that don't exist in these models. Future expansion (see roadmap) will add true hierarchical orchestration where an org chart makes sense.
+Hierarchical dropdowns keep the top bar clean:
+- **Armory** — Dashboard with live stats
+- **Crews** → Startup Crew, Elite Squad
+- **Resources** → Toolbox, Prompts, Builder, Spec
+- **Personal** → Context Files, Judgement
+- **Profile icon** → Settings (API keys), Sign out
 
 ---
 
@@ -454,8 +546,13 @@ Key architectural and design decisions made during development:
 | **Judgement rules separate from entries** | Entries are events (immutable log). Rules are living documents (mutable, toggleable, versionable). |
 | **No external state management** | React state + useCallback handles the complexity. Redux/Zustand would add indirection without solving real problems at this scale. |
 | **Chat bubbles for debates** | Makes agent exchanges feel like real conversations, not database rows. The left/right alternation creates visual rhythm. |
-| **Profile avatar over "Sign out" text** | Users need quick access to context files and judgement rules. A dropdown menu from the avatar serves this better than a single sign-out button. |
-| **Idea selector inline with title** | Eliminates redundancy (no separate "Select Idea" and "New Idea" buttons at different sizes). Pencil icon for rename keeps the header clean. |
+| **API keys in context_files table** | Reuses existing RLS-protected, user-scoped table. Avoids creating a new table for what is effectively user-scoped key-value storage. |
+| **Per-file sharing with aggregation** | Granular control over what's public. Share Skills.md but not Soul.md. Aggregate endpoint for "give agents everything." |
+| **Shared view outside app shell** | No navbar, no auth required. Optimized for agent consumption. Terminal aesthetic signals "this is for machines." |
+| **Dashboard includes built-in crews** | Stats show `crews: N + 2` to reflect the Startup and Elite 9 as built-in crews, even when no custom teams exist. |
+| **Connectors over raw API keys** | Telegram and Firecrawl use the Lovable connector system for automatic credential injection. No manual secret management for core integrations. |
+| **3-5 sentence debate limit** | Prevents verbose LLM outputs. More rounds with less text creates better readability and more natural conversation flow. |
+| **Auto-judgement extraction via regex** | Simple pattern matching catches 80%+ of explicit decisions. More sophisticated NLP would add latency without proportional value at this stage. |
 
 ---
 
@@ -463,27 +560,27 @@ Key architectural and design decisions made during development:
 
 ### Near-Term
 
-- [ ] **Inter-Agent Messaging View** — Watch agents message each other in real-time as documents are generated. See the Chief of Staff delegate, the specialist respond, the CoS review, and the handoff happen.
-- [ ] **Agent-Initiated Conversations** — Agents reach out to the user when they encounter misalignment or need clarification, rather than only responding to user messages.
-- [ ] **Stacked Chat History** — When an agent messages you at different pipeline stages, the full thread is preserved and appended, not replaced.
-- [ ] **Document Collaboration Markers** — Google Docs-style indicators showing which agent contributed which sections to a document.
-- [ ] **Document Export** — Download all generated documents as a PDF/markdown bundle.
+- [ ] **Telegram Feed Integration** — Send links, notes, and documents to a Telegram bot. Firecrawl auto-extracts rich context from URLs. Creates a searchable, indexed knowledge base.
+- [ ] **Inter-Agent Messaging View** — Watch agents message each other in real-time. See the Chief of Staff delegate, the specialist respond, the CoS review.
+- [ ] **Document Markup & Revision** — Select a generated document, annotate it, and send back to the authoring agent for revision with your notes as context.
+- [ ] **Context-Attached Agent Chats** — Select context files (Soul.md, Skills.md) to attach when chatting with a specific agent.
+- [ ] **Agent Work Event Tracking** — When switching between agents, see how many events occurred since your last interaction (docs edited, new docs created, debates completed).
 
 ### Medium-Term
 
 - [ ] **Agile Squad** — Post-launch crew focused on growth, maintenance, streamlining. The Startup Crew gets you from 0→1; the Agile Squad runs the engine from 1→N.
-- [ ] **Chief of Staff Autonomy** — The CoS operates like a true executive assistant — executing tasks to completion and only surfacing decision points above a confidence threshold. The Judgement Framework provides the confidence calibration.
+- [ ] **Chief of Staff Autonomy** — The CoS operates like a true executive assistant — executing tasks to completion and only surfacing decision points above a confidence threshold.
 - [ ] **Hierarchical Orchestration** — Move from sequential pipeline to true org-chart delegation. The CoS delegates to leads, leads delegate to specialists, with escalation paths.
 - [ ] **Cross-Idea Learning** — Judgement rules learned from one idea automatically apply to future ideas. Pattern recognition across projects.
-- [ ] **Weekly QA Reviews** — Automated reports on autonomous agent decisions. Compare agent judgement against your historical decisions. Calibrate confidence levels.
+- [ ] **GitHub Repository Index** — Firecrawl extracts project structure and key files from GitHub repos. Creates a personal project registry with rich metadata.
 
 ### Long-Term Vision
 
 - [ ] **Self-Hosting on Mac Mini** — Clone, configure, run persistently. Your own private agent hub, always on call.
-- [ ] **Custom Domain Context** — `JessesAgents.com/context/{token}` serving your Soul.md, Skills.md, and Rules to any AI tool.
-- [ ] **Model Routing** — Delegation/Routing.md informs which model handles which task based on complexity, cost, and confidence. Simple classification → cheap model. Complex architecture → premium model.
+- [ ] **Custom Domain Context** — `YourDomain.com/context/{token}` serving your full agent configuration to any AI tool.
+- [ ] **Model Routing** — Delegation.md informs which model handles which task based on complexity, cost, and confidence. Simple classification → cheap model. Complex architecture → premium model.
 - [ ] **Thinking Evaluation** — Thinking.md captures your reasoning patterns. Agents evaluate your thinking for strengths and weaknesses, then optimize and codify a "better version of you."
-- [ ] **Communication Style Adaptation** — Communications.md teaches agents when to be terse (pure output), when to banter, and when to add context. Different situations demand different cadences.
+- [ ] **Communication Style Adaptation** — Communications.md teaches agents when to be terse, when to banter, and when to add context.
 
 ---
 
@@ -497,6 +594,8 @@ Key architectural and design decisions made during development:
 | Markdown | react-markdown | Rich document rendering in chat and viewer |
 | Backend | Lovable Cloud (Supabase) | Postgres, RLS, Edge Functions, Auth — zero infrastructure management |
 | AI | Lovable AI Gateway (Gemini 3 Flash Preview) | Streaming SSE, no API key management, fast inference |
+| Web Extraction | Firecrawl | Scrape, search, map, crawl — 4 edge functions for full coverage |
+| Messaging | Telegram Bot API | Quick capture, note-taking, document relay |
 | Auth | Email/password + RLS | Simple, secure, no OAuth complexity for personal use |
 | State | React useState + useCallback | Right-sized for the complexity. No unnecessary abstractions. |
 
@@ -518,6 +617,8 @@ npm run dev
 5. **Review debates** — Switch to the Debates tab to see agents challenge each other
 6. **Manage context** — `/context` to edit your Soul.md, Skills.md, etc.
 7. **Review judgements** — `/judgement` to rule on uncertain decisions and codify patterns
+8. **Configure settings** — `/settings` to store API keys and manage integrations
+9. **Share context** — Toggle files to shared, generate tokenized URLs for agents
 
 ---
 
@@ -527,4 +628,4 @@ MIT
 
 ---
 
-*Built with conviction. Every agent has red lines. Every decision has a paper trail. Every judgement makes the system smarter.*
+*Built with conviction. Every agent has red lines. Every decision has a paper trail. Every judgement makes the system smarter. Now with integrated web extraction, messaging, and a personal secret manager — because a one-person company needs a full arsenal.*
