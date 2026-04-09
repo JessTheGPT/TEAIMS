@@ -67,6 +67,48 @@ export type Database = {
           },
         ]
       }
+      constraints: {
+        Row: {
+          agent_code: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          severity: string
+          type: string
+          updated_at: string
+          user_id: string
+          validator_config: Json
+          validator_type: string
+        }
+        Insert: {
+          agent_code: string
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          severity?: string
+          type?: string
+          updated_at?: string
+          user_id: string
+          validator_config?: Json
+          validator_type?: string
+        }
+        Update: {
+          agent_code?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          severity?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+          validator_config?: Json
+          validator_type?: string
+        }
+        Relationships: []
+      }
       context_docs: {
         Row: {
           category: string | null
@@ -579,6 +621,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      validation_results: {
+        Row: {
+          agent_code: string
+          constraint_id: string | null
+          created_at: string
+          document_id: string | null
+          id: string
+          idea_id: string | null
+          message: string | null
+          revision_count: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          agent_code: string
+          constraint_id?: string | null
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          idea_id?: string | null
+          message?: string | null
+          revision_count?: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          agent_code?: string
+          constraint_id?: string | null
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          idea_id?: string | null
+          message?: string | null
+          revision_count?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_results_constraint_id_fkey"
+            columns: ["constraint_id"]
+            isOneToOne: false
+            referencedRelation: "constraints"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

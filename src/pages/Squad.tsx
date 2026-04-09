@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { validateOutput } from '@/lib/validateOutput';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import SquadPipelineFlow from '@/components/squad/SquadPipelineFlow';
@@ -256,14 +257,73 @@ const Squad = () => {
           setDocuments(prev => prev.map(d => d.id === newDoc.id ? { ...d, content, status: 'generating' } : d));
         },
         onDone: async () => {
-          setDocuments(prev => prev.map(d => d.id === newDoc.id ? { ...d, content, status: 'complete' } : d));
+          // === CONSTRAINT VALIDATION LAYER ===
+          const session = await supabase.auth.getSession();
+          const token = session.data.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+          const validation = await validateOutput({
+            agentCode: agentId,
+            content,
+            ideaId: idea.id,
+            token,
+          });
+
+          let finalContent = content;
+
+          if (validation.status === 'fail') {
+            const violationMsgs = validation.violations
+              .filter(v => v.severity === 'block')
+              .map(v => `🔴 ${v.description}: ${v.message}`)
+              .join('\n');
+            
+            addActivity({
+              type: 'doc_complete',
+              fromAgent: agentId,
+              content: `⛔ System enforcing standards on ${agent.name} output — ${validation.violations.length} constraint(s)`,
+            });
+
+            // Automatic revision loop
+            let revisedContent = '';
+            try {
+              await streamChat({
+                messages: [
+                  { role: 'user', content: `Create the ${docTitle} based on the following startup context.` },
+                  { role: 'assistant', content: content.slice(0, 3000) },
+                  { role: 'user', content: `Your output was flagged by the system:\n\n${violationMsgs}\n\nRevise ONLY to fix these violations.` },
+                ],
+                agent: agentId,
+                context: fullContext,
+                onDelta: (delta) => {
+                  revisedContent += delta;
+                  setDocuments(prev => prev.map(d => d.id === newDoc.id ? { ...d, content: revisedContent, status: 'generating' } : d));
+                },
+                onDone: () => {
+                  finalContent = revisedContent;
+                  addActivity({
+                    type: 'doc_complete',
+                    fromAgent: agentId,
+                    content: `✅ ${agent.name} revised output — constraints satisfied`,
+                  });
+                },
+              });
+            } catch {
+              finalContent = revisedContent || content;
+            }
+          } else if (validation.violations.length > 0) {
+            addActivity({
+              type: 'doc_complete',
+              fromAgent: agentId,
+              content: `⚠️ ${validation.violations.length} warning(s) on ${docTitle}`,
+            });
+          }
+
+          setDocuments(prev => prev.map(d => d.id === newDoc.id ? { ...d, content: finalContent, status: 'complete' } : d));
           setCompletedAgents(prev => new Set([...prev, agentId]));
           await supabase.from('idea_documents').insert({
             idea_id: idea.id,
             agent: agentId,
             phase: agentId,
             title: docTitle,
-            content,
+            content: finalContent,
             status: 'complete',
             user_id: user.id,
           });
@@ -276,7 +336,7 @@ const Squad = () => {
           const decisions: string[] = [];
           for (const pattern of judgementPatterns) {
             let match;
-            while ((match = pattern.exec(content)) !== null && decisions.length < 3) {
+            while ((match = pattern.exec(finalContent)) !== null && decisions.length < 3) {
               decisions.push(match[0].trim());
             }
           }
@@ -301,7 +361,7 @@ const Squad = () => {
           addActivity({
             type: 'doc_complete',
             fromAgent: agentId,
-            content: `${agent.name} completed ${docTitle}`,
+            content: `${agent.name} completed ${docTitle}${validation.constraints_checked > 0 ? ` (${validation.constraints_checked} constraints ✓)` : ''}`,
           });
           setGenerating(false);
           setGeneratingAgent(undefined);
@@ -310,7 +370,7 @@ const Squad = () => {
             ...prev,
             [agentId]: [
               { role: 'user', content: `Create the ${docTitle} based on the startup context.` },
-              { role: 'assistant', content },
+              { role: 'assistant', content: finalContent },
             ],
           }));
         },

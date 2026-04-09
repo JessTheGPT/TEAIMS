@@ -2,13 +2,14 @@
 
 > **Ship entire startups with orchestrated AI agent teams.**  
 > From raw idea → market validation → architecture → design → implementation → security audit → growth strategy → compliance → launch.  
-> With adversarial debates, red-line enforcement, human-in-the-loop judgement, persistent decision intelligence, and integrated external tooling.
+> With **executable constraints**, adversarial debates, human-in-the-loop judgement, truth maintenance, and integrated external tooling.
 
 ---
 
 ## Table of Contents
 
 - [Vision](#vision)
+- [The Constraint Engine (v2)](#the-constraint-engine-v2)
 - [Architecture](#architecture)
 - [Agent Teams](#agent-teams)
 - [Adversarial Debate System](#adversarial-debate-system)
@@ -20,6 +21,7 @@
 - [Technical Implementation](#technical-implementation)
 - [Design Philosophy](#design-philosophy)
 - [Decision Log](#decision-log)
+- [The Critique That Changed Everything](#the-critique-that-changed-everything)
 - [Future State](#future-state)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
@@ -36,11 +38,126 @@ Modern AI tools give you one agent with one context window. That's like running 
 - Every agent has **red lines** — non-negotiable constraints they will not cross
 - Every agent has **flexible areas** — where they'll compromise for the team
 - Agents **debate each other** in structured rounds before decisions are finalized
+- A **constraint engine** enforces standards as executable validation — not prompts, enforcement
 - A **human-in-the-loop framework** captures uncertain decisions and codifies your judgement into reusable rules
 - A **context file system** stores your operating identity — Soul.md, Skills.md, Judgements.md — shareable via secure tokenized URLs
 - **Integrated external tooling** — Telegram for capturing notes on the fly, Firecrawl for deep web extraction, API key management for connecting to any service
 
-The result: AI that operates like a high-functioning team, not a single overloaded assistant.
+The result: AI that operates like a high-functioning team, not a single overloaded assistant. And with v2, it's a team with **real enforcement** — bad outputs literally cannot persist.
+
+---
+
+## The Constraint Engine (v2)
+
+**This is the inflection point.** The Constraint Engine converts Agent Armory from a high-fidelity simulation into a system that maintains truth over time.
+
+### Why This Matters
+
+Before v2, the system had a fundamental gap:
+
+| What we had | What we needed |
+|---|---|
+| Red lines as prompt artifacts | Red lines as executable constraints |
+| "Don't exceed 6 features" in a system prompt | System that **blocks** 8 features automatically |
+| Agents agreeing confidently on wrong assumptions | Validation layer catching violations before they persist |
+| Errors compounding silently through the pipeline | Ground truth enforcement at every stage |
+
+### How It Works
+
+Every agent output passes through a validation layer before it can be saved to the database:
+
+```
+Agent Output → Streaming → Complete
+                              ↓
+                    Constraint Engine
+                    (validate-output)
+                              ↓
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+           ✅ PASS        ⚠️ WARN         ⛔ FAIL
+         Save to DB      Save + Flag      Block + Revise
+                                              ↓
+                                     Agent gets feedback:
+                                     "You violated: [X, Y]"
+                                     "Revise ONLY to fix these."
+                                              ↓
+                                     Revised output → Re-validate
+```
+
+### Constraint Types
+
+| Type | Description | Effect |
+|---|---|---|
+| **Red Line** | Non-negotiable standard | Typically blocks; always logged |
+| **Rule** | Operational guideline | Warns or blocks based on severity |
+
+### Validator Types
+
+| Validator | How It Works | Best For |
+|---|---|---|
+| **Regex** | Pattern matching with `must_match` or `must_not_match` mode | Checking for required keywords, forbidden terms, format compliance |
+| **Function** | Structured checks: feature count, sprint days, required sections, word count | Quantitative constraints (max 6 features, word count range) |
+| **LLM** | AI evaluation via Gemini Flash Lite | Semantic checks ("Does this allow high-severity vulnerabilities?") |
+
+### Severity Levels
+
+- **Block** (`⛔`): Output cannot be saved. Agent enters automatic revision loop.
+- **Warn** (`⚠️`): Output saved with flags. Visible in activity feed.
+
+### Automatic Revision Loop
+
+When a blocking constraint fails:
+
+1. System captures all violations with messages
+2. Agent receives structured feedback: "Your output was flagged by the system: [violations]. Revise ONLY to fix these."
+3. Agent regenerates, receiving its previous output + constraint feedback
+4. Revised output is saved (even if constraints still fail on retry, to prevent infinite loops)
+
+This turns agents into **self-correcting systems**. Quality jumps because they're forced to satisfy constraints.
+
+### Default Constraints (10 High-Impact)
+
+The system ships with seed constraints that users can customize:
+
+| # | Agent | Constraint | Validator | Severity |
+|---|---|---|---|---|
+| 1 | A2 (PM) | Max 6 MVP features | Function | Block |
+| 2 | A2 (PM) | Sprint must be ≤ 14 days | Function | Block |
+| 3 | A5 (Frontend) | Must specify Lighthouse target | Regex | Block |
+| 4 | A7 (Security) | No CRITICAL/HIGH vulnerabilities allowed | LLM | Block |
+| 5 | A3 (Architect) | Must include required architecture sections | Function | Warn |
+| 6 | All Agents | Documents must be 200-5000 words | Function | Warn |
+| 7 | A6 (Backend) | No raw SQL allowed | Regex (must_not_match) | Block |
+| 8 | A8 (Growth) | No dark patterns | LLM | Block |
+| 9 | A5 (Frontend) | Must specify bundle size target | Regex | Warn |
+| 10 | A1 (Market) | Must include TAM analysis | Regex | Block |
+
+### Constraints Management UI
+
+The `/constraints` page provides full CRUD:
+- Toggle constraints active/inactive
+- Set agent scope (specific agent or global)
+- Choose validator type with quick templates
+- Configure validator JSON (regex patterns, function checks, LLM prompts)
+- Visual severity indicators (block vs warn)
+
+### From Judgement Rules to Runtime Constraints
+
+Judgement rules discovered through the HITL framework can be promoted to runtime constraints. Example:
+
+```
+Judgement Rule: "Max 6 MVP features"
+    ↓ (promoted)
+Constraint: {
+  agent_code: "A2_vision",
+  type: "rule",
+  validator_type: "function",
+  validator_config: { "check": "max_features", "max": 6 },
+  severity: "block"
+}
+```
+
+Now the rule isn't passive memory — it's active enforcement.
 
 ---
 
@@ -52,8 +169,8 @@ The result: AI that operates like a high-functioning team, not a single overload
 │  React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · Framer Motion   │
 │                                                                             │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────────┐│
-│  │ Startup  │ │  Elite 9 │ │ Context  │ │Judgement │ │  Settings/Keys     ││
-│  │  Crew    │ │  Squad   │ │  Files   │ │Framework │ │  Integrations      ││
+│  │ Startup  │ │  Elite 9 │ │ Context  │ │Judgement │ │  Constraint Engine ││
+│  │  Crew    │ │  Squad   │ │  Files   │ │Framework │ │  Settings/Keys     ││
 │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └────────┬───────────┘│
 │       │             │            │             │                │            │
 ├───────┼─────────────┼────────────┼─────────────┼────────────────┼────────────┤
@@ -61,36 +178,39 @@ The result: AI that operates like a high-functioning team, not a single overload
 │                       Lovable Cloud (Supabase)                              │
 │  ┌──────────────────────────────────────────────────────────────────────────┐│
 │  │  Edge Functions (Streaming SSE + REST)                                   ││
-│  │  ├── startup-chat     → Agent conversation + doc generation             ││
-│  │  ├── context          → Public context doc serving                      ││
-│  │  ├── agent-context    → Tokenized agent config endpoint                 ││
-│  │  ├── firecrawl-scrape → Single-page web extraction                      ││
-│  │  ├── firecrawl-search → Web search with optional scraping               ││
-│  │  ├── firecrawl-map    → Sitemap discovery                               ││
-│  │  └── firecrawl-crawl  → Recursive website crawl                         ││
+│  │  ├── startup-chat       → Agent conversation + doc generation           ││
+│  │  ├── validate-output    → Constraint validation engine (v2)             ││
+│  │  ├── context            → Public context doc serving                    ││
+│  │  ├── agent-context      → Tokenized agent config endpoint              ││
+│  │  ├── firecrawl-scrape   → Single-page web extraction                    ││
+│  │  ├── firecrawl-search   → Web search with optional scraping             ││
+│  │  ├── firecrawl-map      → Sitemap discovery                             ││
+│  │  └── firecrawl-crawl    → Recursive website crawl                       ││
 │  ├──────────────────────────────────────────────────────────────────────────┤│
 │  │  Postgres + RLS                                                          ││
-│  │  ├── startup_ideas     (user-scoped, phase-tracked)                     ││
-│  │  ├── idea_messages     (per-agent conversation history)                 ││
-│  │  ├── idea_documents    (generated deliverables)                         ││
-│  │  ├── debate_messages   (adversarial debate transcripts)                 ││
-│  │  ├── context_files     (Soul.md, Skills.md, API keys, etc.)             ││
-│  │  ├── judgement_entries  (HITL decision log)                              ││
-│  │  ├── judgement_rules    (codified decision patterns)                     ││
-│  │  ├── share_tokens      (secure URL sharing)                             ││
-│  │  ├── agents / teams    (agent configuration)                            ││
-│  │  ├── tools             (tool registry)                                  ││
-│  │  ├── prompt_templates  (reusable prompt library)                        ││
-│  │  └── context_docs      (public knowledge base)                          ││
+│  │  ├── startup_ideas       (user-scoped, phase-tracked)                   ││
+│  │  ├── idea_messages       (per-agent conversation history)               ││
+│  │  ├── idea_documents      (generated deliverables)                       ││
+│  │  ├── debate_messages     (adversarial debate transcripts)               ││
+│  │  ├── context_files       (Soul.md, Skills.md, API keys, etc.)           ││
+│  │  ├── constraints         (executable validation rules — v2)             ││
+│  │  ├── validation_results  (audit log of every check — v2)                ││
+│  │  ├── judgement_entries    (HITL decision log)                            ││
+│  │  ├── judgement_rules      (codified decision patterns)                   ││
+│  │  ├── share_tokens        (secure URL sharing)                           ││
+│  │  ├── agents / teams      (agent configuration)                          ││
+│  │  ├── tools               (tool registry)                                ││
+│  │  ├── prompt_templates    (reusable prompt library)                      ││
+│  │  └── context_docs        (public knowledge base)                        ││
 │  └──────────────────────────────────────────────────────────────────────────┘│
 │                                                                             │
-│  AI Gateway: Lovable AI (Gemini 3 Flash Preview) — streaming SSE            │
+│  AI Gateway: Lovable AI (Gemini 3 Flash Preview + Gemini 2.5 Flash Lite)   │
 │  Auth: Email/password with RLS on all user data                             │
 │  Connectors: Telegram Bot API · Firecrawl Web Extraction                    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Data Flow
+### Data Flow (v2 — with Constraint Enforcement)
 
 ```
 User Input (idea description)
@@ -110,29 +230,39 @@ User Input (idea description)
      │                            │
      │  Produces:                 │
      │  • Structured document     │
-     │  • Persisted to DB         │
-     │  • Activity feed update    │
-     │  • Judgement extraction    │
+     └──────────┬─────────────────┘
+                │
+                ▼
+     ┌─── Constraint Engine ──────┐    ← NEW in v2
+     │  For each active constraint: │
+     │  • Regex validation          │
+     │  • Function checks           │
+     │  • LLM evaluation            │
+     │                              │
+     │  Result:                     │
+     │  • PASS → Persist to DB      │
+     │  • WARN → Persist + Flag     │
+     │  • FAIL → Revision Loop      │
+     └──────────┬─────────────────┘
+                │
+                ▼ (if PASS)
+     ┌─── Persisted to DB ────────┐
+     │  • Activity feed update     │
+     │  • Judgement extraction      │
+     │  • Validation results logged │
      └──────────┬─────────────────┘
                 │
                 ▼
      ┌─── Adversarial Debates ───┐
-     │  Triggered after key      │
-     │  agent completions        │
-     │  Red line enforcement     │
-     │  Majority alignment       │
+     │  Triggered after key       │
+     │  agent completions         │
+     │  Red line enforcement      │
+     │  Majority alignment        │
      └──────────┬─────────────────┘
                 │
                 ▼
-     ┌─── Judgement Extraction ──┐
-     │  Auto-detect decisions    │
-     │  Surface to HITL review   │
-     │  Codify into rules        │
-     └──────────┬─────────────────┘
-                │
-                ▼
-        Final Alignment Forum
-        (All agents converge)
+         Final Alignment Forum
+         (All agents converge)
 ```
 
 ---
@@ -154,7 +284,7 @@ A classic startup team covering core functions. Designed for speed — takes an 
 
 **Pipeline:** Intake → Strategy → Execution → Synthesis → Launch Ready
 
-The Chief of Staff acts as the orchestrator — the user chats directly with them, and they delegate to specialists. Each phase generates documents that become cumulative context for subsequent agents.
+The Chief of Staff acts as the orchestrator — the user chats directly with them, and they delegate to specialists. Each phase generates documents that become cumulative context for subsequent agents. **All outputs pass through the Constraint Engine before persistence.**
 
 ### ⚡ Elite 9 Squad — 9 Agents, Sequential + Adversarial
 
@@ -172,7 +302,7 @@ A high-fidelity, opinionated squad modeled after top-tier startup operators. Eve
 | Growth Lead | A8 | Growth | Measurable KPIs, no dark patterns, GDPR-compliant | Growth Strategy |
 | SRE/Ops/Legal | A9 | Compliance | Zero-downtime deploys, legal compliance, GDPR | Deployment & Compliance |
 
-Each agent auto-generates their document by consuming all prior context. The pipeline is sequential — A1 validates before A2 scopes, A2 scopes before A3 architects. This mirrors how decisions flow in a real organization: you don't architect before you've validated the market.
+Each agent auto-generates their document by consuming all prior context. The pipeline is sequential — A1 validates before A2 scopes, A2 scopes before A3 architects. **With v2, red lines are now executable constraints — A2 literally cannot persist more than 6 features.**
 
 **Auto-Judgement Extraction:** As documents are generated, the system scans for decision patterns (e.g., "prioritized X over Y", "chose A instead of B") and automatically surfaces them as pending judgement entries for human review.
 
@@ -205,37 +335,17 @@ These tensions are *features*, not bugs. They prevent blind spots. Agent Armory 
 | Security vs Speed | A7 ↔ A5 ↔ A6 | After security audit | 4 |
 | Growth vs Compliance | A8 ↔ A7 ↔ A9 | After growth plan | 3 |
 
-**1 Open Forum** — all 9 agents converge for final alignment:
-- Each agent states their position on the complete plan
-- Red line violations are flagged explicitly
-- Majority alignment required to proceed
-- If an agent's red line is crossed, that section must be revised
+**1 Open Forum** — all 9 agents converge for final alignment.
 
-### Red Line Enforcement
+### The Relationship Between Debates and Constraints
 
-Every agent has **non-negotiable constraints** and **flexible areas**:
+With the Constraint Engine, many conflicts that debates used to surface are now **pre-resolved**:
 
-```
-🔴 RED LINES (will block the project):
-   Security: "No CRITICAL/HIGH vulnerabilities in production"
-   PM: "Max 6 MVP features — will not approve more"
-   Frontend: "Lighthouse ≥ 98 on mobile"
+- A2 can't propose 8 features → constraint blocks it before debate
+- A5 can't omit performance targets → regex catches it
+- A6 can't use raw SQL → pattern matching prevents it
 
-🟢 FLEXIBLE (willing to negotiate):
-   Security: "Auth provider choice is flexible"
-   PM: "Feature prioritization can shift based on tech feedback"
-   Frontend: "Component library is flexible"
-```
-
-When an agent detects a red line violation during debate, they explicitly flag `RED_LINE_VIOLATED`. The debate transcript shows stance indicators:
-- **Assert** — stating initial position
-- **Challenge** — pushing back on another agent's claim
-- **Red Line** — non-negotiable constraint triggered
-- **Align** — consensus reached
-
-### Concise, Conversational Debates
-
-Debates are engineered for readability — agents are prompted to keep responses to 3-5 sentences, use a conversational tone, and reference each other by name. This prevents wall-of-text syndrome and makes debates feel like watching a real team conversation. Chat bubbles with left/right alignment create visual rhythm.
+Debates still matter for **subjective tensions** (market positioning, prioritization, design philosophy) where there's no binary right/wrong. But the Constraint Engine handles **objective violations** — making debates more focused and productive.
 
 ---
 
@@ -252,37 +362,27 @@ AI agents make thousands of micro-decisions. Most are fine. Some are wrong. The 
 
 ### The Solution
 
-**Judgement Entries** — Agents surface uncertain decisions to the user:
-```
-Agent: Security Auditor
-Question: "Should we require 2FA for admin accounts at MVP?"
-Category: Security
-Confidence: Low
-Options: [Yes - Require 2FA, No - Email/password only for MVP]
-Context: "Most competitor MVPs don't require 2FA, but our security audit flagged it."
-```
+**Judgement Entries** — Agents surface uncertain decisions to the user.
 
-**User Rules** — You make a decision, then codify the pattern:
-```
-Decision: "Yes — always require 2FA for admin"
-Rule: "Any user with elevated permissions (admin, moderator) must have 2FA enabled"
-Category: Security
-Confidence: High
-```
+**User Rules** — You make a decision, then codify the pattern.
 
 **Learning Loop:**
 1. Agent encounters uncertainty → logs a Judgement Entry
 2. You review → make a decision
 3. You optionally codify into a Rule
-4. Future agents check Rules before asking
-5. Weekly QA: review agent decisions made autonomously
-6. Refine or descope rules based on outcomes
+4. **NEW:** You can promote rules to executable Constraints
+5. Future agents check Rules before asking
+6. Constraints actively block violations in real-time
 
-**Auto-Surfacing from Agent Output:** The Elite 9 Squad automatically scans generated documents for decision patterns using regex matching. Phrases like "prioritized", "chose", "trade-off", "instead of" trigger automatic creation of pending judgement entries. This ensures no significant decision slips through without human review.
+### Judgement → Constraint Pipeline
 
-### Editable Rules
+This is the v2 upgrade: judgement rules are no longer passive memory. They become active enforcement:
 
-Rules are fully editable — toggle active/inactive, update rule text, adjust confidence, and delete obsolete rules. Categories help organize by domain (Architecture, Security, Design, Business, Process).
+```
+Passive Rule: "Max 6 MVP features"
+    ↓ (promoted to constraint)
+Active Enforcement: Agent proposes 8 → System blocks → Forces revision
+```
 
 ---
 
@@ -298,204 +398,161 @@ Your AI operating identity, stored as structured markdown files.
 | **Skills.md** | Technical capabilities, domain expertise, tools mastery |
 | **Human.md** | Communication style, preferences, working patterns |
 | **Judgements.md** | Decision history, codified rules, review cadence |
-| **Communications.md** | Style, cadence, channel routing (banter vs efficiency vs terse) |
-| **Delegation.md** | When to orchestrate, cost-based model routing, task complexity mapping |
-| **Thinking.md** | Lines of thinking, reasoning patterns, strengths/weaknesses analysis |
+| **Communications.md** | Style, cadence, channel routing |
+| **Delegation.md** | When to orchestrate, cost-based model routing |
+| **Thinking.md** | Lines of thinking, reasoning patterns |
 
-### Storage Architecture
+### Per-File Sharing & Aggregate Sharing
 
-Context files use a **dual storage model**:
-- **Database** (`context_files` table) — versioned, searchable, taggable, RLS-protected
-- **Exportable as .md** — for local use, git integration, cross-tool compatibility
-
-### Per-File Sharing
-
-Each file has an individual `is_shared` toggle and generates its own shareable link. This allows selective exposure — share your Skills.md publicly while keeping Soul.md private.
-
-### Aggregate Sharing
-
-A "Share All" button generates a single tokenized URL that bundles all files marked as shared, plus your active judgement rules. This creates a complete agent configuration endpoint.
+Each file has an individual `is_shared` toggle. A "Share All" button bundles all shared files + active judgement rules into a single tokenized URL for agent consumption.
 
 ---
 
 ## Settings & Secret Management
 
-The Settings page (`/settings`) serves as a personal secret manager:
-
-- **API Key Storage** — Save keys for OpenAI, Anthropic, Google AI, Supabase, Firecrawl, Telegram, GitHub, or custom providers
-- **Masked Display** — Keys are masked by default with show/hide toggle
-- **Provider Tagging** — Each key is tagged with its provider for easy identification
-- **Private Storage** — Keys are stored in the user's `context_files` table with `category: 'api_keys'`, fully RLS-protected
-- **Quick Links** — Direct navigation to Context Files, Judgement Rules, and Share Links
-
-This centralizes all credentials needed for autonomous agent execution in one secure, user-owned location.
+The Settings page (`/settings`) serves as a personal secret manager with API key storage for OpenAI, Anthropic, Google AI, Supabase, Firecrawl, Telegram, GitHub, and custom providers.
 
 ---
 
 ## External Integrations
 
 ### Telegram Bot API
-
-Connected via the Lovable connector system. Enables:
-- Sending documents and notes to a Telegram bot for quick capture
-- Future: receiving messages as a persistent feed of ideas, links, and context
+Connected via the Lovable connector system. Enables sending documents and notes to a Telegram bot.
 
 ### Firecrawl Web Extraction
-
-Four edge functions provide full web extraction capabilities:
-
-| Function | Purpose | Use Case |
-|----------|---------|----------|
-| `firecrawl-scrape` | Extract content from a single URL | Rich context from articles, docs, competitor pages |
-| `firecrawl-search` | Web search with optional scraping | Research and competitive intelligence |
-| `firecrawl-map` | Discover all URLs on a domain | Sitemap generation, project structure mapping |
-| `firecrawl-crawl` | Recursively scrape entire sites | Deep knowledge base extraction |
-
-**Output formats:** markdown, HTML, raw HTML, links, screenshots, branding extraction, AI-generated summaries, and structured JSON extraction with custom schemas.
+Four edge functions: `firecrawl-scrape`, `firecrawl-search`, `firecrawl-map`, `firecrawl-crawl`.
 
 ---
 
 ## Sharing & Agent-Accessible Endpoints
 
 ### Tokenized URLs
-
-Every share link uses a cryptographically generated token:
-```
-https://your-domain.com/share/{token}           → Human-readable terminal view
-https://your-project.supabase.co/functions/v1/agent-context/{token}  → Raw JSON for agents
-```
-
-### Terminal-Style Shared View
-
-The `/share/:token` route renders outside the app shell (no navbar) in a polished dark terminal aesthetic:
-- **Summary header** with file count and generation timestamp
-- **Jump index** with line number ranges per file (e.g., `L1–L42: Soul.md`)
-- **Monospace content** with line numbers for easy agent indexing
-- **Optimized for scraping** — agents hit the page, read the summary, see the index, and know exactly which line ranges to extract
-
-### Edge Function Endpoint
-
-The `agent-context` edge function serves structured JSON:
-```json
-{
-  "context": {
-    "soul": "...",
-    "skills": "...",
-    "rules": [...],
-    "metadata": { "files_count": 7, "rules_count": 12 }
-  }
-}
-```
-
-**Use case:** Paste the URL into any AI tool's custom instructions. It always serves the latest version of your context, behind a rotating token for security.
+Every share link uses a cryptographically generated token. The `/share/:token` route renders in a polished dark terminal aesthetic optimized for agent consumption — no navbar, monospace content, line numbers, jump index.
 
 ---
 
 ## Technical Implementation
 
+### The Constraint Engine (Edge Function)
+
+The `validate-output` edge function is the enforcement backbone:
+
+```typescript
+// Input
+{
+  "agent_code": "A5_frontend",
+  "content": "...generated document...",
+  "document_id": "uuid",
+  "idea_id": "uuid"
+}
+
+// Validation flow
+1. Fetch active constraints for agent + global (*)
+2. Run each validator (regex, function, LLM)
+3. Log all results to validation_results table
+4. Return status: pass | fail | needs_review
+
+// Output
+{
+  "status": "fail",
+  "violations": [
+    {
+      "type": "RED_LINE",
+      "constraint_id": "uuid",
+      "severity": "block",
+      "description": "Lighthouse ≥ 98 on mobile",
+      "message": "Content does not match required pattern"
+    }
+  ],
+  "constraints_checked": 5,
+  "message": "1 blocking violation(s) found"
+}
+```
+
+### Three Validator Implementations
+
+**Regex Validator:**
+```typescript
+const regex = new RegExp(config.pattern, config.flags || "i");
+const matches = regex.test(content);
+// mode: "must_match" | "must_not_match"
+```
+
+**Function Validator:**
+- `max_features`: Counts markdown headers matching feature patterns
+- `max_sprint_days`: Extracts day estimates, checks against threshold
+- `has_sections`: Verifies required markdown sections exist
+- `word_count_range`: Validates document length
+
+**LLM Validator:**
+```typescript
+// Uses Gemini Flash Lite for speed + cost efficiency
+// System prompt: "You are a constraint validator. Respond with {pass: bool, message: str}"
+// Content truncated to 3000 chars for speed
+```
+
+### Revision Loop Integration
+
+Both Startup and Squad pipelines intercept the `onDone` handler:
+
+```typescript
+onDone: async () => {
+  const validation = await validateOutput({
+    agentCode: agent.id,
+    content,
+    ideaId: idea.id,
+    token,
+  });
+
+  if (validation.status === 'fail') {
+    // DO NOT SAVE
+    // Send violations as feedback → agent revises
+    await streamChat({
+      messages: [
+        { role: 'assistant', content: content.slice(0, 3000) },
+        { role: 'user', content: `Your output was flagged: ${violations}. Revise.` },
+      ],
+      ...
+    });
+    return;
+  }
+
+  // Only now persist
+  await saveDocument(finalContent);
+}
+```
+
 ### Streaming Architecture
 
-All agent responses use **Server-Sent Events (SSE)** via edge functions:
-
-```typescript
-const encoder = new TextEncoder();
-const stream = new ReadableStream({
-  async start(controller) {
-    for await (const chunk of aiResponse) {
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta: chunk })}\n\n`));
-    }
-    controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-    controller.close();
-  }
-});
-return new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } });
-```
-
-The client-side `streamChat` utility handles reconnection, parsing, and state updates:
-```typescript
-await streamChat({
-  messages, agent, context,
-  onDelta: (delta) => { /* append to document content */ },
-  onDone: async () => { /* persist to database */ },
-});
-```
+All agent responses use **Server-Sent Events (SSE)** via edge functions. The `streamChat` utility handles parsing and state updates.
 
 ### Row-Level Security
 
-Every user-facing table uses RLS with `auth.uid()`:
-
-```sql
-CREATE POLICY "Users can read own ideas"
-  ON startup_ideas FOR SELECT TO authenticated
-  USING (user_id = auth.uid());
-```
-
-Tables that are inherently public (tools, prompt_templates, context_docs) use `is_public = true` policies. Shared context files have an additional anon policy: `is_shared = true`.
+Every user-facing table uses RLS with `auth.uid()`. The `constraints` and `validation_results` tables are fully user-scoped.
 
 ### State Management
 
-The application uses **React state** with `useCallback` memoization for agent message handling. No external state library — the complexity doesn't warrant it. Key patterns:
-
-- `agentMessages: Record<string, Message[]>` — per-agent conversation history
-- `documents: IdeaDocument[]` — generated deliverables with status tracking
-- `completedAgents: Set<string>` — pipeline progress tracking
-- `activityFeed: ActivityEvent[]` — real-time event log
-
-### Component Architecture
-
-```
-pages/
-  Dashboard.tsx    — Armory overview with live stats (crews, tools, ideas, docs, rules)
-  Startup.tsx      — Startup Crew orchestrator (state + pipeline logic)
-  Squad.tsx        — Elite 9 orchestrator (state + debate + judgement extraction)
-  Context.tsx      — Context file editor with per-file sharing
-  Judgement.tsx    — HITL decision framework with full CRUD on rules
-  Settings.tsx     — API key manager + quick links
-  SharedContext.tsx — Public terminal-style shared view (no auth, no navbar)
-
-components/
-  startup/
-    AgentChat.tsx          — Real-time chat with streaming
-    DocumentPanel.tsx      — Document list with status indicators
-    DocumentViewer.tsx     — Full markdown document viewer (prose-xs sizing)
-    CenterCanvas.tsx       — Dynamic content area (activity / documents)
-    PipelineFlow.tsx       — Phase-based pipeline visualization
-    IdeaSelector.tsx       — Idea picker with inline rename
-    AgentActivityFeed.tsx  — Event log with agent attribution
-
-  squad/
-    SquadPipelineFlow.tsx        — 9-agent sequential pipeline
-    DebateCanvas.tsx              — Adversarial debate with chat bubbles (3-5 sentence limit)
-    DebateFlowVisualization.tsx  — Pipeline + debate node overlay
-
-  AppNavigation.tsx — Hierarchical nav with Crews, Resources, Personal dropdowns
-```
+React state + `useCallback` memoization. No external state library.
 
 ### Challenges Solved
 
-**1. Cumulative Context Without Explosion**  
-Each agent receives all prior documents + the original conversation. For agent A9, that's 8 prior documents. We concatenate them with clear delimiters but keep prompts focused — the system prompt tells the agent to produce *their specific deliverable*, not comment on everything.
+**1. Constraint Validation Without Blocking UX**  
+Validation runs after streaming completes but before persistence. If a constraint fails, the revision loop happens transparently — the user sees "⛔ System enforcing standards" in the activity feed, then "✅ Revised and completed" moments later.
 
-**2. Streaming + State Updates**  
-Updating React state on every SSE chunk (potentially hundreds per second) would cause performance issues. We batch updates and use functional state setters to avoid stale closures:
-```typescript
-setDocuments(prev => prev.map(d => d.id === newDoc.id ? { ...d, content } : d));
-```
+**2. LLM Validators at Scale**  
+LLM validation uses Gemini 2.5 Flash Lite — the cheapest, fastest model — with content truncated to 3000 chars. This keeps validation under 2 seconds per check. If the validator is unavailable, it passes by default (fail-open for non-critical validators).
 
-**3. Debate Ordering**  
-Debates must run sequentially — agent A responds to agent B's latest message. We use a for-loop with `await` rather than parallel execution, ensuring each agent sees the full conversation history.
+**3. Constraint Scope Resolution**  
+Constraints can target a specific agent (`A5_frontend`) or all agents (`*`). The query uses `.or()` to fetch both, ensuring global rules like word count limits apply everywhere.
 
-**4. Red Line Detection**  
-Red line violations are detected via keyword matching in the response (`RED_LINE_VIOLATED`). This is intentionally simple — the prompt engineering ensures agents use these exact flags. The alternative (semantic analysis of every response) would add latency and complexity without meaningful accuracy improvement.
+**4. Cumulative Context Without Explosion**  
+Each agent receives all prior documents + the original conversation. We concatenate with clear delimiters but keep prompts focused.
 
-**5. Share Token Persistence**  
-Aggregate share tokens are loaded from the database on mount, ensuring they survive tab switches and page refreshes. Individual file tokens use `resource_id` linking for precise per-file access.
+**5. Debate Ordering**  
+Debates run sequentially with `await`, ensuring each agent sees the full conversation history.
 
 **6. Auto-Judgement Extraction**  
-Regex pattern matching against generated document content identifies decision-making language (e.g., "prioritized", "chose", "trade-off") and automatically creates pending judgement entries. This bridges the gap between agent autonomy and human oversight.
-
-**7. Concise Debate Prompts**  
-Debate agents are system-prompted with strict length limits (3-5 sentences) and conversational tone requirements. This prevents the common LLM failure mode of verbose, repetitive debate responses.
+Regex pattern matching on generated content identifies decision-making language and creates pending judgement entries.
 
 ---
 
@@ -503,84 +560,110 @@ Debate agents are system-prompted with strict length limits (3-5 sentences) and 
 
 ### Aesthetic: Command Center, Not Dashboard
 
-Agent Armory draws from **military operations centers** and **trading floor terminals** — dense information, low chrome, maximum signal. Key principles:
-
-- **Information density over whitespace** — every pixel earns its place
-- **Semantic color tokens** — all colors flow through CSS custom properties, never hardcoded
-- **Micro-typography** — 9-11px for metadata, 12-13px for content, careful font-weight hierarchy
-- **Collapsed by default** — pipeline flow, debates, all expandable sections start compact
-- **Dark-first** — designed for extended use sessions
+Agent Armory draws from **military operations centers** and **trading floor terminals** — dense information, low chrome, maximum signal.
 
 ### Layout Architecture
 
-The crew pages use a **command center layout**:
-1. **Top:** Full-width collapsible pipeline flow (the "mission status" bar)
-2. **Left sidebar:** Agent chat with quick-switch icons
-3. **Center canvas:** Tabbed — Documents / Debates / Activity
-4. **Right sidebar:** Contextual panels (activity feed, settings)
+Crew pages use a **command center layout**: full-width pipeline flow, left sidebar (chat), center canvas (documents/debates/activity).
 
-This gives maximum breathing room to the content that matters (documents and conversations) while keeping navigation and status compact.
+### UI for Constraint Violations
 
-### Navigation Structure
+**Critical design choice:** Constraint failures are NOT presented as "errors." They're presented as:
 
-Hierarchical dropdowns keep the top bar clean:
-- **Armory** — Dashboard with live stats
-- **Crews** → Startup Crew, Elite Squad
-- **Resources** → Toolbox, Prompts, Builder, Spec
-- **Personal** → Context Files, Judgement
-- **Profile icon** → Settings (API keys), Sign out
+```
+✅ "System enforcing performance standard (Lighthouse ≥98)"
+NOT
+❌ "Agent failed validation"
+```
+
+This reinforces trust in the **system**, not individual agents.
 
 ---
 
 ## Decision Log
 
-Key architectural and design decisions made during development:
+Key architectural and design decisions:
 
 | Decision | Rationale |
 |----------|-----------|
-| **Sequential pipeline over parallel** | Mirrors real orgs — you validate before you build. Cumulative context gets richer at each step. |
-| **SSE streaming over WebSockets** | Simpler, unidirectional (server→client), supported by edge functions, no connection management. |
-| **Red lines as prompt engineering** | Keyword detection (`RED_LINE_VIOLATED`) is reliable when agents are well-prompted. Semantic analysis adds complexity without proportional accuracy gains. |
-| **Debates after specific agents, not after every agent** | Not every transition needs adversarial review. Market→Scope and Security→Growth are natural friction points. |
-| **Context files in DB, not file storage** | Versioning, tagging, search, and RLS come free with Postgres. Export to .md is a view concern. |
-| **Judgement rules separate from entries** | Entries are events (immutable log). Rules are living documents (mutable, toggleable, versionable). |
-| **No external state management** | React state + useCallback handles the complexity. Redux/Zustand would add indirection without solving real problems at this scale. |
-| **Chat bubbles for debates** | Makes agent exchanges feel like real conversations, not database rows. The left/right alternation creates visual rhythm. |
-| **API keys in context_files table** | Reuses existing RLS-protected, user-scoped table. Avoids creating a new table for what is effectively user-scoped key-value storage. |
-| **Per-file sharing with aggregation** | Granular control over what's public. Share Skills.md but not Soul.md. Aggregate endpoint for "give agents everything." |
-| **Shared view outside app shell** | No navbar, no auth required. Optimized for agent consumption. Terminal aesthetic signals "this is for machines." |
-| **Dashboard includes built-in crews** | Stats show `crews: N + 2` to reflect the Startup and Elite 9 as built-in crews, even when no custom teams exist. |
-| **Connectors over raw API keys** | Telegram and Firecrawl use the Lovable connector system for automatic credential injection. No manual secret management for core integrations. |
-| **3-5 sentence debate limit** | Prevents verbose LLM outputs. More rounds with less text creates better readability and more natural conversation flow. |
-| **Auto-judgement extraction via regex** | Simple pattern matching catches 80%+ of explicit decisions. More sophisticated NLP would add latency without proportional value at this stage. |
+| **Executable constraints over prompt-only red lines** | Prompts are suggestions. Constraints are enforcement. The gap between "agent was told not to" and "agent physically cannot" is the difference between simulation and reliability. |
+| **Three validator types (regex, function, LLM)** | Regex handles 60% of checks cheaply. Functions handle quantitative rules (counts, thresholds). LLM handles semantic questions. This covers the full spectrum without overusing expensive AI calls. |
+| **Block + auto-revision over just flagging** | If you only flag, nobody reviews the flags. If you block + auto-revise, quality improves automatically. The revision loop is the multiplier. |
+| **Gemini Flash Lite for LLM validation** | Cheapest and fastest model. Constraint checking is binary (pass/fail), not nuanced reasoning. Using a premium model would add cost without accuracy gains. |
+| **Fail-open for unavailable validators** | If the validation endpoint is down, don't block the user's workflow. Log the gap, pass by default. Trust is built over time, not by breaking things. |
+| **Constraints as user-scoped data** | Different users have different standards. A security-focused founder wants strict OWASP checks. A hackathon project wants speed. Constraints are personal, not global. |
+| **Sequential pipeline over parallel** | Mirrors real orgs — you validate before you build. |
+| **SSE streaming over WebSockets** | Simpler, unidirectional, supported by edge functions. |
+| **Debates after specific agents, not every agent** | Not every transition needs adversarial review. |
+| **Context files in DB, not file storage** | Versioning, tagging, search, and RLS come free. |
+| **Judgement rules separate from entries** | Entries are events. Rules are living documents. |
+| **API keys in context_files table** | Reuses existing RLS-protected table. |
+| **Shared view outside app shell** | Optimized for agent consumption. |
+| **Connectors over raw API keys** | Telegram and Firecrawl use the connector system. |
+| **3-5 sentence debate limit** | Prevents verbose LLM outputs. |
+
+---
+
+## The Critique That Changed Everything
+
+A rigorous external analysis identified five critical failure modes in the v1 system:
+
+### 1. Theater Over Reliability
+> "9 agents, 6 debates, 4 rounds, red line flags, streaming UI — this feels powerful. But under the hood, it's still probabilistic text generation stacked in layers."
+
+**Fix:** The Constraint Engine adds a verification layer between generation and persistence.
+
+### 2. Red Lines Were Cosmetic
+> "There is no verification layer, no constraint engine, no post-check validation. Agents can miss violations, falsely flag violations, contradict themselves later."
+
+**Fix:** Red lines are now executable. `RED_LINE_VIOLATED` in a prompt became `validator_type: 'regex', severity: 'block'` in a database row.
+
+### 3. No Separation Between Proposal and Reality
+> "Agents generate documents. Documents become state. Next agents trust that state. Errors compound silently."
+
+**Fix:** The validation layer creates a gate between proposal (raw output) and committed state (persisted document). Only validated content persists.
+
+### 4. Judgement System Was Under-Leveraged
+> "It's a dashboard, not a control system."
+
+**Fix:** Judgement rules can be promoted to active constraints. The system goes from "log decisions" to "enforce decisions in real-time."
+
+### 5. Context Accumulation ≠ Intelligence
+> "More context → more noise. More tokens → weaker signal."
+
+**Acknowledged — future fix.** The current system still uses full context injection. The roadmap includes retrieval + synthesis to replace raw document dumps.
+
+### The Core Insight
+
+> "You're building a pipeline that produces outputs. You need a system that maintains truth over time."
+
+The Constraint Engine is the first concrete step toward truth maintenance. It doesn't solve everything, but it solves the foundation: **bad outputs literally cannot persist.**
 
 ---
 
 ## Future State
 
-### Near-Term
+### Near-Term (Next)
 
-- [ ] **Telegram Feed Integration** — Send links, notes, and documents to a Telegram bot. Firecrawl auto-extracts rich context from URLs. Creates a searchable, indexed knowledge base.
-- [ ] **Inter-Agent Messaging View** — Watch agents message each other in real-time. See the Chief of Staff delegate, the specialist respond, the CoS review.
-- [ ] **Document Markup & Revision** — Select a generated document, annotate it, and send back to the authoring agent for revision with your notes as context.
-- [ ] **Context-Attached Agent Chats** — Select context files (Soul.md, Skills.md) to attach when chatting with a specific agent.
-- [ ] **Agent Work Event Tracking** — When switching between agents, see how many events occurred since your last interaction (docs edited, new docs created, debates completed).
+- [ ] **Document Staging (Draft → Verified → Canonical)** — Three-layer document model where only validated documents become canonical context for future agents
+- [ ] **Context Retrieval Over Injection** — Replace "give every agent everything" with relevant slices, prior decisions, and compressed summaries
+- [ ] **Constraint-Informed Debates** — Debates reference active constraints, making disagreements about legitimate trade-offs rather than detectable violations
+- [ ] **Telegram Feed Integration** — Send links, notes, and documents to a Telegram bot
+- [ ] **Document Markup & Revision** — Annotate generated documents and send back to the authoring agent
 
 ### Medium-Term
 
-- [ ] **Agile Squad** — Post-launch crew focused on growth, maintenance, streamlining. The Startup Crew gets you from 0→1; the Agile Squad runs the engine from 1→N.
-- [ ] **Chief of Staff Autonomy** — The CoS operates like a true executive assistant — executing tasks to completion and only surfacing decision points above a confidence threshold.
-- [ ] **Hierarchical Orchestration** — Move from sequential pipeline to true org-chart delegation. The CoS delegates to leads, leads delegate to specialists, with escalation paths.
-- [ ] **Cross-Idea Learning** — Judgement rules learned from one idea automatically apply to future ideas. Pattern recognition across projects.
-- [ ] **GitHub Repository Index** — Firecrawl extracts project structure and key files from GitHub repos. Creates a personal project registry with rich metadata.
+- [ ] **Agent Count Optimization** — Consolidate from 9 shallow specialists to 3-5 deep agents with stronger constraints, better tools, and deeper reasoning
+- [ ] **Rewrite Loop** — Periodically merge documents, remove redundancy, resolve contradictions, extract higher-order insights. The system evolves from many documents to fewer, sharper truths.
+- [ ] **Chief of Staff Autonomy** — The CoS operates like a true executive assistant, executing to completion and only surfacing decision points above a confidence threshold
+- [ ] **Cross-Idea Learning** — Judgement rules and constraints learned from one idea automatically apply to future ideas
 
 ### Long-Term Vision
 
-- [ ] **Self-Hosting on Mac Mini** — Clone, configure, run persistently. Your own private agent hub, always on call.
-- [ ] **Custom Domain Context** — `YourDomain.com/context/{token}` serving your full agent configuration to any AI tool.
-- [ ] **Model Routing** — Delegation.md informs which model handles which task based on complexity, cost, and confidence. Simple classification → cheap model. Complex architecture → premium model.
-- [ ] **Thinking Evaluation** — Thinking.md captures your reasoning patterns. Agents evaluate your thinking for strengths and weaknesses, then optimize and codify a "better version of you."
-- [ ] **Communication Style Adaptation** — Communications.md teaches agents when to be terse, when to banter, and when to add context.
+- [ ] **Truth Maintenance Engine** — Full separation of proposal/verification/canonical state. Every claim tracked, every contradiction resolved, every insight compounded.
+- [ ] **Self-Hosting on Mac Mini** — Clone, configure, run persistently
+- [ ] **Model Routing via Delegation.md** — Task complexity → model selection
+- [ ] **Active Constraint Learning** — System observes which constraints frequently trigger revision and suggests new constraints based on patterns
 
 ---
 
@@ -591,13 +674,14 @@ Key architectural and design decisions made during development:
 | Frontend | React 18, TypeScript, Vite | Type safety, fast HMR, modern tooling |
 | Styling | Tailwind CSS, shadcn/ui | Semantic tokens, accessible components, dark mode |
 | Animation | Framer Motion | Declarative, performant, gesture support |
-| Markdown | react-markdown | Rich document rendering in chat and viewer |
-| Backend | Lovable Cloud (Supabase) | Postgres, RLS, Edge Functions, Auth — zero infrastructure management |
-| AI | Lovable AI Gateway (Gemini 3 Flash Preview) | Streaming SSE, no API key management, fast inference |
-| Web Extraction | Firecrawl | Scrape, search, map, crawl — 4 edge functions for full coverage |
-| Messaging | Telegram Bot API | Quick capture, note-taking, document relay |
-| Auth | Email/password + RLS | Simple, secure, no OAuth complexity for personal use |
-| State | React useState + useCallback | Right-sized for the complexity. No unnecessary abstractions. |
+| Markdown | react-markdown | Rich document rendering |
+| Backend | Lovable Cloud (Supabase) | Postgres, RLS, Edge Functions, Auth |
+| AI (Generation) | Lovable AI Gateway (Gemini 3 Flash Preview) | Streaming SSE, fast inference |
+| AI (Validation) | Lovable AI Gateway (Gemini 2.5 Flash Lite) | Cheap, fast constraint checking |
+| Web Extraction | Firecrawl | Scrape, search, map, crawl |
+| Messaging | Telegram Bot API | Quick capture, note-taking |
+| Auth | Email/password + RLS | Simple, secure |
+| State | React useState + useCallback | Right-sized for the complexity |
 
 ---
 
@@ -614,11 +698,13 @@ npm run dev
 2. **Choose a crew** — `/startup` for the 6-agent team, `/squad` for the Elite 9
 3. **Describe your idea** — Chat with the intake agent
 4. **Watch agents work** — Documents generate in real-time via streaming
-5. **Review debates** — Switch to the Debates tab to see agents challenge each other
-6. **Manage context** — `/context` to edit your Soul.md, Skills.md, etc.
-7. **Review judgements** — `/judgement` to rule on uncertain decisions and codify patterns
-8. **Configure settings** — `/settings` to store API keys and manage integrations
-9. **Share context** — Toggle files to shared, generate tokenized URLs for agents
+5. **Constraint enforcement** — Watch the activity feed for ✅ pass / ⚠️ warn / ⛔ block indicators
+6. **Review debates** — Switch to the Debates tab to see agents challenge each other
+7. **Manage constraints** — `/constraints` to create, edit, toggle validation rules
+8. **Manage context** — `/context` to edit your Soul.md, Skills.md, etc.
+9. **Review judgements** — `/judgement` to rule on uncertain decisions and codify patterns
+10. **Configure settings** — `/settings` to store API keys and manage integrations
+11. **Share context** — Toggle files to shared, generate tokenized URLs for agents
 
 ---
 
@@ -628,4 +714,4 @@ MIT
 
 ---
 
-*Built with conviction. Every agent has red lines. Every decision has a paper trail. Every judgement makes the system smarter. Now with integrated web extraction, messaging, and a personal secret manager — because a one-person company needs a full arsenal.*
+*Built with conviction. Every agent has red lines — and now those red lines are executable. Every decision has a paper trail. Every judgement makes the system smarter. Every constraint makes it more reliable. The gap between simulation and truth maintenance starts closing here.*
