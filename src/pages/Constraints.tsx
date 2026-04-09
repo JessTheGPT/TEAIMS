@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, Plus, Trash2, ToggleLeft, ToggleRight, AlertTriangle, CheckCircle, Edit2, Save, X } from 'lucide-react';
+import { Shield, Plus, Trash2, ToggleLeft, ToggleRight, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -107,7 +107,7 @@ const Constraints = () => {
         type: form.type,
         description: form.description,
         validator_type: form.validator_type,
-        validator_config: config,
+        validator_config: config as any,
         severity: form.severity,
       }).eq('id', editingId);
       if (error) { toast.error('Failed to update'); return; }
@@ -119,9 +119,9 @@ const Constraints = () => {
         type: form.type,
         description: form.description,
         validator_type: form.validator_type,
-        validator_config: config,
+        validator_config: config as any,
         severity: form.severity,
-      });
+      } as any);
       if (error) { toast.error('Failed to create'); return; }
       toast.success('Constraint created');
     }
