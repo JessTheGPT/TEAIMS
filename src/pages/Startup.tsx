@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { validateOutput } from '@/lib/validateOutput';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import PipelineFlow from '@/components/startup/PipelineFlow';
@@ -216,6 +217,78 @@ const Startup = () => {
             setDocuments(prev => prev.map(d => d.id === newDoc.id ? { ...d, content, status: 'generating' } : d));
           },
           onDone: async () => {
+            // === CONSTRAINT VALIDATION LAYER ===
+            const session = await supabase.auth.getSession();
+            const token = session.data.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+            const validation = await validateOutput({
+              agentCode: agent.id,
+              content,
+              ideaId: idea.id,
+              token,
+            });
+
+            if (validation.status === 'fail') {
+              const violationMsgs = validation.violations
+                .filter(v => v.severity === 'block')
+                .map(v => `🔴 ${v.description}: ${v.message}`)
+                .join('\n');
+              
+              addActivity({
+                type: 'doc_complete',
+                fromAgent: agent.id,
+                content: `⛔ ${agent.name} output blocked by ${validation.violations.length} constraint(s)`,
+              });
+
+              // Retry with constraint feedback
+              const retryContent = `Your previous output was blocked by the following constraints:\n\n${violationMsgs}\n\nPlease revise your ${docTitle} to satisfy ALL constraints. Here is your previous output for reference:\n\n${content.slice(0, 2000)}`;
+              
+              let revisedContent = '';
+              try {
+                await streamChat({
+                  messages: [
+                    { role: 'user', content: `Create the ${docTitle} based on the following startup context.` },
+                    { role: 'assistant', content: content.slice(0, 3000) },
+                    { role: 'user', content: retryContent },
+                  ],
+                  agent: agent.id,
+                  context: fullContext,
+                  onDelta: (delta) => {
+                    revisedContent += delta;
+                    setDocuments(prev => prev.map(d => d.id === newDoc.id ? { ...d, content: revisedContent, status: 'generating' } : d));
+                  },
+                  onDone: async () => {
+                    setDocuments(prev => prev.map(d => d.id === newDoc.id ? { ...d, content: revisedContent, status: 'complete' } : d));
+                    await supabase.from('idea_documents').insert({
+                      idea_id: idea.id,
+                      agent: agent.id,
+                      phase,
+                      title: docTitle,
+                      content: revisedContent,
+                      status: 'complete',
+                      user_id: user.id,
+                    });
+                    addActivity({
+                      type: 'doc_complete',
+                      fromAgent: agent.id,
+                      content: `✅ ${agent.name} revised and completed ${docTitle} (passed constraints)`,
+                    });
+                  },
+                });
+              } catch {
+                setDocuments(prev => prev.map(d => d.id === newDoc.id ? { ...d, content: revisedContent || content, status: 'complete' } : d));
+              }
+              return;
+            }
+
+            // Validation passed or warnings only
+            if (validation.violations.length > 0) {
+              addActivity({
+                type: 'doc_complete',
+                fromAgent: agent.id,
+                content: `⚠️ ${validation.violations.length} warning(s) on ${docTitle} — saved with flags`,
+              });
+            }
+
             setDocuments(prev => prev.map(d => d.id === newDoc.id ? { ...d, content, status: 'complete' } : d));
             await supabase.from('idea_documents').insert({
               idea_id: idea.id,
@@ -229,7 +302,7 @@ const Startup = () => {
             addActivity({
               type: 'doc_complete',
               fromAgent: agent.id,
-              content: `Completed ${docTitle}`,
+              content: `Completed ${docTitle}${validation.constraints_checked > 0 ? ` (${validation.constraints_checked} constraints checked ✓)` : ''}`,
             });
           },
         });
