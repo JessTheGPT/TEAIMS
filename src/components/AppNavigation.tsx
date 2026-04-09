@@ -35,6 +35,7 @@ const navItems = [
     children: [
       { label: 'Context Files', href: '/context' },
       { label: 'Judgement', href: '/judgement' },
+      { label: 'Constraints', href: '/constraints' },
     ],
   },
 ];
