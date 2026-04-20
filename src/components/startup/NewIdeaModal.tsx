@@ -25,7 +25,7 @@ interface PendingFile {
 
 const MAX_FILE_MB = 10;
 
-const NewIdeaModal = ({ open, onOpenChange, onCreated }: NewIdeaModalProps) => {
+const NewIdeaModal = ({ open, onOpenChange, onCreated, initialPhase = 'intake', modalTitle = 'New Startup Idea' }: NewIdeaModalProps) => {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
