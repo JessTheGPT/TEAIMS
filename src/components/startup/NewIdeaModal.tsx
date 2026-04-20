@@ -12,6 +12,10 @@ interface NewIdeaModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (ideaId: string) => void;
+  /** Initial phase to start the idea in (default: 'intake') */
+  initialPhase?: string;
+  /** Title shown in the modal header */
+  modalTitle?: string;
 }
 
 interface PendingFile {
