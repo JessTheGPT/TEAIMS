@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_chats: {
+        Row: {
+          agent_code: string
+          content: string
+          created_at: string
+          id: string
+          idea_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          agent_code: string
+          content: string
+          created_at?: string
+          id?: string
+          idea_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          agent_code?: string
+          content?: string
+          created_at?: string
+          id?: string
+          idea_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_chats_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "startup_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           code_examples: Json | null
@@ -327,6 +365,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "idea_messages_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "startup_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idea_source_files: {
+        Row: {
+          created_at: string
+          extracted_text: string | null
+          file_name: string
+          id: string
+          idea_id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          extracted_text?: string | null
+          file_name: string
+          id?: string
+          idea_id: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          extracted_text?: string | null
+          file_name?: string
+          id?: string
+          idea_id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "idea_source_files_idea_id_fkey"
             columns: ["idea_id"]
             isOneToOne: false
             referencedRelation: "startup_ideas"
