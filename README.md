@@ -10,6 +10,7 @@
 
 - [Vision](#vision)
 - [The Constraint Engine (v2)](#the-constraint-engine-v2)
+- [v2.1 — Founder Intake, Source Material & Persistent Threads](#v21--founder-intake-source-material--persistent-threads)
 - [Architecture](#architecture)
 - [Agent Teams](#agent-teams)
 - [Adversarial Debate System](#adversarial-debate-system)
