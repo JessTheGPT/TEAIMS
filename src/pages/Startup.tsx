@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Rocket, ArrowRight, Loader2, ChevronDown, ChevronUp, Plus, Sparkles, MessageSquare, FileText, ArrowLeft, LogOut } from 'lucide-react';
+import { Rocket, ArrowRight, Loader2, ChevronDown, ChevronUp, Plus, Sparkles, MessageSquare, FileText, ArrowLeft, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { validateOutput } from '@/lib/validateOutput';
 import { toast } from 'sonner';
@@ -12,6 +10,11 @@ import AgentChat from '@/components/startup/AgentChat';
 import DocumentPanel, { IdeaDocument } from '@/components/startup/DocumentPanel';
 import CenterCanvas from '@/components/startup/CenterCanvas';
 import IdeaSelector, { StartupIdea } from '@/components/startup/IdeaSelector';
+import NewIdeaModal from '@/components/startup/NewIdeaModal';
+import IdeaHeader from '@/components/startup/IdeaHeader';
+import SourcePanel from '@/components/startup/SourcePanel';
+import ChiefOfStaffPanel from '@/components/startup/ChiefOfStaffPanel';
+import DelegationView from '@/components/startup/DelegationView';
 import { STARTUP_AGENTS, PHASES, getAgentsByPhase } from '@/lib/startupAgents';
 import { streamChat } from '@/lib/streamChat';
 
@@ -26,21 +29,28 @@ export type ActivityEvent = {
   timestamp: number;
 };
 
+type CenterView =
+  | { type: 'activity' }
+  | { type: 'document'; id: string }
+  | { type: 'source' }
+  | { type: 'delegation'; agentCode: string };
+
 const Startup = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [ideas, setIdeas] = useState<StartupIdea[]>([]);
   const [activeIdea, setActiveIdea] = useState<StartupIdea | null>(null);
   const [agentMessages, setAgentMessages] = useState<Record<string, Message[]>>({});
   const [documents, setDocuments] = useState<IdeaDocument[]>([]);
   const [activeAgent, setActiveAgent] = useState('chief_of_staff');
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [flowExpanded, setFlowExpanded] = useState(true);
-  const [centerView, setCenterView] = useState<{ type: 'activity' | 'document'; id?: string }>({ type: 'activity' });
+  const [centerView, setCenterView] = useState<CenterView>({ type: 'activity' });
   const [activityFeed, setActivityFeed] = useState<ActivityEvent[]>([]);
-  const [sidebarTab, setSidebarTab] = useState<'chat' | 'docs'>('chat');
+  const [sidebarTab, setSidebarTab] = useState<'chat' | 'docs' | 'source'>('chat');
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [directChatAgent, setDirectChatAgent] = useState('chief_of_staff');
 
   useEffect(() => { loadIdeas(); }, []);
 
@@ -74,27 +84,20 @@ const Startup = () => {
     setDocuments((docResult.data as IdeaDocument[]) || []);
   };
 
-  const createIdea = async () => {
-    if (!newTitle.trim() || !user) return;
-    const { data, error } = await supabase
-      .from('startup_ideas')
-      .insert({ title: newTitle.trim(), status: 'active', current_phase: 'intake', user_id: user.id })
-      .select()
-      .single();
-
-    if (error) { toast.error('Failed to create idea'); return; }
-    const idea = data as StartupIdea;
-    setIdeas(prev => [idea, ...prev]);
-    setActiveIdea(idea);
-    setAgentMessages({});
-    setDocuments([]);
-    setActiveAgent('chief_of_staff');
-    setActivityFeed([]);
-    setCenterView({ type: 'activity' });
-    setSidebarTab('chat');
-    setShowNewDialog(false);
-    setNewTitle('');
-    toast.success('Idea created — chat with Chief of Staff to get started');
+  const handleIdeaCreated = async (ideaId: string) => {
+    const { data } = await supabase.from('startup_ideas').select('*').eq('id', ideaId).single();
+    if (data) {
+      const idea = data as StartupIdea;
+      setIdeas(prev => [idea, ...prev.filter(i => i.id !== idea.id)]);
+      setActiveIdea(idea);
+      setAgentMessages({});
+      setDocuments([]);
+      setActiveAgent('chief_of_staff');
+      setDirectChatAgent('chief_of_staff');
+      setActivityFeed([]);
+      setCenterView({ type: 'activity' });
+      setSidebarTab('chat');
+    }
   };
 
   const handleMessagesChange = useCallback((agent: string, newMessages: Message[]) => {
@@ -149,7 +152,7 @@ const Startup = () => {
     }
 
     await supabase.from('startup_ideas').update({ current_phase: nextPhase }).eq('id', activeIdea.id);
-    
+
     const updatedIdea = { ...activeIdea, current_phase: nextPhase };
     setActiveIdea(updatedIdea);
     setIdeas(prev => prev.map(i => i.id === activeIdea.id ? updatedIdea : i));
@@ -173,11 +176,22 @@ const Startup = () => {
     setGenerating(true);
     setCenterView({ type: 'activity' });
 
+    // Pull source-file extracted text into agent context too
+    const { data: sourceFiles } = await supabase
+      .from('idea_source_files')
+      .select('file_name, extracted_text')
+      .eq('idea_id', idea.id);
+    const sourceContext = (sourceFiles || [])
+      .filter(f => f.extracted_text)
+      .map(f => `## Source: ${f.file_name}\n\n${f.extracted_text}`)
+      .join('\n\n---\n\n');
+
     const contextDocs = documents.filter(d => d.status === 'complete' || d.status === 'reviewed');
     const context = contextDocs.map(d => `## ${d.title}\n\n${d.content}`).join('\n\n---\n\n');
     const chatMsgs = agentMessages['chief_of_staff'] || [];
     const chatContext = chatMsgs.map(m => `${m.role === 'user' ? 'Founder' : 'Chief of Staff'}: ${m.content}`).join('\n\n');
-    const fullContext = chatContext + (context ? '\n\n---\n\n' + context : '');
+    const descContext = idea.description ? `## Founder's Brief\n\n${idea.description}` : '';
+    const fullContext = [descContext, sourceContext, chatContext, context].filter(Boolean).join('\n\n---\n\n');
 
     for (const agent of phaseAgents) {
       addActivity({
@@ -217,7 +231,6 @@ const Startup = () => {
             setDocuments(prev => prev.map(d => d.id === newDoc.id ? { ...d, content, status: 'generating' } : d));
           },
           onDone: async () => {
-            // === CONSTRAINT VALIDATION LAYER ===
             const session = await supabase.auth.getSession();
             const token = session.data.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
             const validation = await validateOutput({
@@ -232,16 +245,15 @@ const Startup = () => {
                 .filter(v => v.severity === 'block')
                 .map(v => `🔴 ${v.description}: ${v.message}`)
                 .join('\n');
-              
+
               addActivity({
                 type: 'doc_complete',
                 fromAgent: agent.id,
                 content: `⛔ ${agent.name} output blocked by ${validation.violations.length} constraint(s)`,
               });
 
-              // Retry with constraint feedback
               const retryContent = `Your previous output was blocked by the following constraints:\n\n${violationMsgs}\n\nPlease revise your ${docTitle} to satisfy ALL constraints. Here is your previous output for reference:\n\n${content.slice(0, 2000)}`;
-              
+
               let revisedContent = '';
               try {
                 await streamChat({
@@ -280,7 +292,6 @@ const Startup = () => {
               return;
             }
 
-            // Validation passed or warnings only
             if (validation.violations.length > 0) {
               addActivity({
                 type: 'doc_complete',
@@ -330,6 +341,12 @@ const Startup = () => {
     toast.success('Idea renamed');
   };
 
+  const handlePipelineAgentClick = (agentId: string) => {
+    setActiveAgent(agentId);
+    setDirectChatAgent(agentId);
+    setCenterView({ type: 'delegation', agentCode: agentId });
+  };
+
   return (
     <div className="h-screen flex flex-col bg-background pt-12 overflow-hidden">
       {/* Top bar */}
@@ -343,7 +360,7 @@ const Startup = () => {
             <IdeaSelector
               ideas={ideas}
               activeIdea={activeIdea}
-              onSelect={(idea) => { setActiveIdea(idea); setActiveAgent('chief_of_staff'); setCenterView({ type: 'activity' }); setSidebarTab('chat'); }}
+              onSelect={(idea) => { setActiveIdea(idea); setActiveAgent('chief_of_staff'); setDirectChatAgent('chief_of_staff'); setCenterView({ type: 'activity' }); setSidebarTab('chat'); }}
               onNew={() => setShowNewDialog(true)}
               onRename={handleRenameIdea}
             />
@@ -370,8 +387,8 @@ const Startup = () => {
             </div>
             <h2 className="text-lg font-semibold text-foreground mb-2">Launch Your Startup</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Chat with your AI Chief of Staff, then watch expert agents create technical specs, 
-              business plans, and competitive analysis.
+              Describe your idea, upload source material, and watch a full team of expert agents
+              create technical specs, business plans, and competitive analysis.
             </p>
             <Button onClick={() => setShowNewDialog(true)} className="gap-2">
               <Plus className="w-4 h-4" /> New Idea
@@ -380,7 +397,10 @@ const Startup = () => {
         </div>
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Full-width Pipeline Flow — collapsible */}
+          {/* Idea header — bigger name + collapsible brief */}
+          <IdeaHeader idea={activeIdea} />
+
+          {/* Pipeline Flow — collapsible */}
           <div className="flex-shrink-0 border-b border-border/40">
             <button
               onClick={() => setFlowExpanded(!flowExpanded)}
@@ -397,10 +417,7 @@ const Startup = () => {
                 <PipelineFlow
                   currentPhase={activeIdea.current_phase}
                   activeAgent={activeAgent}
-                  onAgentClick={(agentId) => {
-                    setActiveAgent(agentId);
-                    setSidebarTab('chat');
-                  }}
+                  onAgentClick={handlePipelineAgentClick}
                   documents={documents}
                   generating={generating}
                 />
@@ -408,42 +425,42 @@ const Startup = () => {
             )}
           </div>
 
-          {/* Main content: sidebar + center canvas */}
+          {/* Main content: sidebar + center canvas + right direct-chat panel */}
           <div className="flex-1 flex overflow-hidden">
-            {/* LEFT SIDEBAR: Chat + Docs tabs */}
+            {/* LEFT SIDEBAR: Chat + Docs + Source tabs */}
             <div className="w-96 flex-shrink-0 border-r border-border/40 flex flex-col bg-card/20">
-              {/* Tab switcher */}
               <div className="flex border-b border-border/40 flex-shrink-0">
                 <button
                   onClick={() => setSidebarTab('chat')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors ${
-                    sidebarTab === 'chat'
-                      ? 'text-primary border-b-2 border-primary bg-primary/5'
-                      : 'text-muted-foreground hover:text-foreground'
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-2.5 text-[11px] font-medium transition-colors ${
+                    sidebarTab === 'chat' ? 'text-primary border-b-2 border-primary bg-primary/5' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  Chat
+                  <MessageSquare className="w-3 h-3" /> Chat
                 </button>
                 <button
                   onClick={() => setSidebarTab('docs')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors ${
-                    sidebarTab === 'docs'
-                      ? 'text-primary border-b-2 border-primary bg-primary/5'
-                      : 'text-muted-foreground hover:text-foreground'
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-2.5 text-[11px] font-medium transition-colors ${
+                    sidebarTab === 'docs' ? 'text-primary border-b-2 border-primary bg-primary/5' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  <FileText className="w-3.5 h-3.5" />
-                  Docs
+                  <FileText className="w-3 h-3" /> Docs
                   {documents.length > 0 && (
-                    <span className="ml-1 text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                    <span className="ml-0.5 text-[9px] bg-primary/10 text-primary px-1 py-0.5 rounded-full">
                       {documents.filter(d => d.status === 'complete' || d.status === 'reviewed').length}
                     </span>
                   )}
                 </button>
+                <button
+                  onClick={() => { setSidebarTab('source'); setCenterView({ type: 'source' }); }}
+                  className={`flex-1 flex items-center justify-center gap-1 px-2 py-2.5 text-[11px] font-medium transition-colors ${
+                    sidebarTab === 'source' ? 'text-primary border-b-2 border-primary bg-primary/5' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <BookOpen className="w-3 h-3" /> Source
+                </button>
               </div>
 
-              {/* Tab content */}
               <div className="flex-1 overflow-hidden">
                 {sidebarTab === 'chat' ? (
                   <AgentChat
@@ -457,7 +474,7 @@ const Startup = () => {
                       addActivity({ type: 'delegation', fromAgent, toAgent, content: msg });
                     }}
                   />
-                ) : (
+                ) : sidebarTab === 'docs' ? (
                   <DocumentPanel
                     documents={documents}
                     activePhase={activeIdea.current_phase}
@@ -466,14 +483,27 @@ const Startup = () => {
                       setCenterView({ type: 'document', id: docId });
                     }}
                   />
+                ) : (
+                  <div className="h-full overflow-y-auto p-3">
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Original description and uploaded source files. Click any item to view full content in the canvas.
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-3 text-xs"
+                      onClick={() => setCenterView({ type: 'source' })}
+                    >
+                      <BookOpen className="w-3 h-3 mr-1.5" /> Open source viewer
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
 
             {/* CENTER: Dynamic Canvas */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              {/* Back button when viewing a document */}
-              {centerView.type === 'document' && (
+              {(centerView.type === 'document' || centerView.type === 'source') && (
                 <div className="flex-shrink-0 px-4 py-2 border-b border-border/40 bg-card/30">
                   <button
                     onClick={() => setCenterView({ type: 'activity' })}
@@ -485,42 +515,45 @@ const Startup = () => {
                 </div>
               )}
               <div className="flex-1 overflow-hidden">
-                <CenterCanvas
-                  view={centerView}
-                  documents={documents}
-                  activityFeed={activityFeed}
-                  onDocumentUpdate={handleDocumentUpdate}
-                  generating={generating}
-                />
+                {centerView.type === 'delegation' ? (
+                  <DelegationView
+                    agentCode={centerView.agentCode}
+                    documents={documents}
+                    activityFeed={activityFeed}
+                    onBack={() => setCenterView({ type: 'activity' })}
+                    onOpenDoc={(docId) => setCenterView({ type: 'document', id: docId })}
+                  />
+                ) : centerView.type === 'source' ? (
+                  <SourcePanel ideaId={activeIdea.id} description={activeIdea.description} />
+                ) : (
+                  <CenterCanvas
+                    view={centerView}
+                    documents={documents}
+                    activityFeed={activityFeed}
+                    onDocumentUpdate={handleDocumentUpdate}
+                    generating={generating}
+                  />
+                )}
               </div>
             </div>
+
+            {/* RIGHT: Persistent direct chat panel (Chief of Staff or selected agent) */}
+            <ChiefOfStaffPanel
+              ideaId={activeIdea.id}
+              agentCode={directChatAgent}
+              context={activeIdea.description || undefined}
+              collapsed={rightPanelCollapsed}
+              onToggle={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+            />
           </div>
         </div>
       )}
 
-      {/* New Idea Dialog */}
-      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Rocket className="w-4 h-4 text-primary" />
-              New Startup Idea
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 pt-2">
-            <Input
-              placeholder="What's your idea called?"
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && createIdea()}
-              autoFocus
-            />
-            <Button onClick={createIdea} disabled={!newTitle.trim()} className="w-full gap-2">
-              <Rocket className="w-4 h-4" /> Start Building
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <NewIdeaModal
+        open={showNewDialog}
+        onOpenChange={setShowNewDialog}
+        onCreated={handleIdeaCreated}
+      />
     </div>
   );
 };
