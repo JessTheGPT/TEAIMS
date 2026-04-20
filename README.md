@@ -161,6 +161,120 @@ Now the rule isn't passive memory — it's active enforcement.
 
 ---
 
+## v2.1 — Founder Intake, Source Material & Persistent Threads
+
+The Constraint Engine fixed *truth maintenance*. v2.1 fixes the next bottleneck: **founder context capture and operator visibility**. Before this release, creating a new idea was a single text input — agents had to hallucinate the founder's intent. Now the system captures rich intent up front and surfaces every layer of work transparently.
+
+### What Changed
+
+| Capability | Before v2.1 | After v2.1 |
+|---|---|---|
+| New idea intake | Single title prompt | Modal with title + long-form description + drag-drop file uploads |
+| Source material | Lost — agents only saw chat history | Stored in dedicated `idea_source_files` + auto-extracted text fed to every agent's context |
+| Idea identity in UI | Tiny dropdown chip | Prominent header with collapsible founder brief |
+| Delegation visibility | Buried in activity feed | Click any agent in the pipeline → mandate, delegation log, owned docs, activity timeline |
+| Direct chat with Chief of Staff | Same chat as document review | Dedicated right-side collapsible panel, persistent per-agent threads |
+| Switching between agents | Lost conversation history | Each `(idea, agent)` pair has a persistent thread in `agent_chats` |
+
+### The Founder Intake Modal
+
+Clicking **New Idea** now opens a 2xl modal with three first-class fields:
+
+1. **Idea Name** — short, the team's reference handle
+2. **Description & Context** — large free-form textarea (problem, target users, hypotheses, constraints, links — anything the team should know)
+3. **Source Files** — drag-drop upload (PDF, DOCX, TXT, MD, images, up to 10MB each)
+
+On submit:
+- File goes to a private `idea-files` storage bucket scoped to the user
+- A row is created in `idea_source_files` with mime type, size, and storage path
+- The `extract-file-text` edge function reads the file (PDFs and images go through Gemini 2.5 Flash multimodal; plain text is read directly) and stores the extracted markdown back into `extracted_text`
+- All extracted text is automatically injected into every downstream agent's context — agents now see the founder's actual research, screenshots, and reference docs
+
+### Source Tab + Source Viewer
+
+The Command Center now has a **Source** tab next to Documents and Debates. Inside the canvas you can:
+- Read the original founder description verbatim
+- Click any uploaded file to expand its extracted text inline
+- Download the original binary via signed URL
+
+### The Idea Header
+
+A new prominent header sits above the pipeline showing the active idea name in 16px bold with a one-click **Show brief** toggle that reveals the original description without leaving the workflow. The team's actual project is finally first-class in the UI instead of a tiny dropdown chip.
+
+### Delegation View — Click Any Agent
+
+Clicking an agent node in the pipeline opens a dedicated **Delegation View** in the canvas showing:
+- **Mandate** — the agent's role and scope
+- **Delegated From Chief of Staff** — every delegation event sent to this agent
+- **Documents Owned** — direct links to documents the agent produced (clickable)
+- **Activity Log** — chronological events involving this agent
+
+This is the answer to "I want to be able to click and see how the Chief of Staff is delegating the work."
+
+### Persistent Per-Agent Direct Chat
+
+A new right-side collapsible panel runs a **separate, persistent thread** with whichever agent you've selected. Key properties:
+
+- **Persistent**: stored in `agent_chats` table — each `(idea_id, agent_code)` pair keeps full history
+- **Resilient to navigation**: open the Tech Lead, view a doc, chat with the Designer, switch back to the Tech Lead — the prior conversation is still there
+- **Collapsible**: collapse to a 28px rail to free up canvas space; expand back instantly
+- **Independent of the main flow**: the main `idea_messages` chat (used for phase advancement) is untouched; the right panel is for direct, ad-hoc conversation with any specialist
+- **Context-aware**: the panel passes the founder's brief and any uploaded source as context to the agent
+
+### Why This Matters Architecturally
+
+This is a small UX upgrade with an outsized truth-maintenance impact:
+
+1. **Higher signal at the source**: Agents now anchor on the founder's actual artifacts, not hallucinated assumptions about the brief
+2. **Auditable delegation**: Every Chief of Staff → specialist handoff is queryable and visualized — no more "I don't know what was assigned to whom"
+3. **Compounding agent memory**: Persistent per-agent threads mean specialists develop a relationship with the founder, retaining nuance across sessions
+4. **Aligned with the Reality Layer philosophy**: Source files, descriptions, and per-agent chats are all *first-class data*, not transient prompt fragments
+
+### New Schema (v2.1)
+
+```sql
+-- Founder-uploaded reference material
+CREATE TABLE idea_source_files (
+  id uuid PRIMARY KEY,
+  idea_id uuid REFERENCES startup_ideas(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL,
+  file_name text NOT NULL,
+  mime_type text,
+  storage_path text NOT NULL,
+  size_bytes integer,
+  extracted_text text,        -- auto-extracted by edge function
+  created_at timestamptz
+);
+
+-- Persistent per-agent direct chat threads
+CREATE TABLE agent_chats (
+  id uuid PRIMARY KEY,
+  idea_id uuid REFERENCES startup_ideas(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL,
+  agent_code text NOT NULL,   -- e.g. 'chief_of_staff', 'tech_lead', 'A3_pm'
+  role text NOT NULL,         -- 'user' | 'assistant'
+  content text NOT NULL,
+  created_at timestamptz
+);
+
+-- Private storage bucket for source files
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('idea-files', 'idea-files', false);
+```
+
+All three are protected by RLS — only the owning user can read, write, or delete.
+
+### New Edge Function: `extract-file-text`
+
+A dedicated function that reads any uploaded file from `idea-files` and returns clean markdown:
+- **Plain text / markdown / CSV / JSON**: read directly
+- **PDFs and images**: piped through `google/gemini-2.5-flash` (multimodal) with an instruction to extract verbatim and preserve structure
+- Returns up to 50,000 characters per file (truncated for context-window safety)
+
+The result is written back to `idea_source_files.extracted_text` and made available to every agent in the pipeline via the assembled context block.
+
+---
+
 ## Architecture
 
 ```
