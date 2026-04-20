@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Zap, ArrowRight, Loader2, ChevronDown, ChevronUp, Plus, Sparkles, MessageSquare, FileText, ArrowLeft, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { validateOutput } from '@/lib/validateOutput';
 import { toast } from 'sonner';
