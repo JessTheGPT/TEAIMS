@@ -66,7 +66,7 @@ const NewIdeaModal = ({ open, onOpenChange, onCreated, initialPhase = 'intake', 
           title: title.trim(),
           description: description.trim() || null,
           status: 'active',
-          current_phase: 'intake',
+          current_phase: initialPhase,
           user_id: user.id,
         })
         .select()
