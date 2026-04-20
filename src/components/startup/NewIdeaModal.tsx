@@ -145,7 +145,7 @@ const NewIdeaModal = ({ open, onOpenChange, onCreated, initialPhase = 'intake', 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Rocket className="w-4 h-4 text-primary" />
-            New Startup Idea
+            {modalTitle}
           </DialogTitle>
           <DialogDescription className="text-xs">
             Give your team everything they need to get started — name, description, and any source material.
