@@ -13,6 +13,7 @@ import DocumentPanel, { IdeaDocument } from '@/components/startup/DocumentPanel'
 import DocumentViewer from '@/components/startup/DocumentViewer';
 import AgentActivityFeed from '@/components/startup/AgentActivityFeed';
 import IdeaSelector, { StartupIdea } from '@/components/startup/IdeaSelector';
+import NewIdeaModal from '@/components/startup/NewIdeaModal';
 import { SQUAD_AGENTS } from '@/lib/squadAgents';
 import { DEBATE_PAIRS } from '@/lib/debateConfig';
 import { streamChat } from '@/lib/streamChat';
@@ -30,7 +31,6 @@ const Squad = () => {
   const [activeAgent, setActiveAgent] = useState(SQUAD_AGENTS[0].id);
   const [currentStep, setCurrentStep] = useState(0);
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generatingAgent, setGeneratingAgent] = useState<string | undefined>();
@@ -93,17 +93,16 @@ const Squad = () => {
     setCurrentStep(Math.max(0, lastCompletedIdx + 1));
   };
 
-  const createIdea = async () => {
-    if (!newTitle.trim() || !user) return;
-    const { data, error } = await supabase
-      .from('startup_ideas')
-      .insert({ title: newTitle.trim(), status: 'active', current_phase: 'squad', user_id: user.id })
-      .select()
-      .single();
-
-    if (error) { toast.error('Failed to create idea'); return; }
+  const handleIdeaCreated = async (ideaId: string) => {
+    const { data } = await supabase.from('startup_ideas').select('*').eq('id', ideaId).single();
+    if (!data) return;
+    // Squad expects current_phase = 'squad' — coerce
+    if (data.current_phase !== 'squad') {
+      await supabase.from('startup_ideas').update({ current_phase: 'squad' }).eq('id', ideaId);
+      data.current_phase = 'squad';
+    }
     const idea = data as StartupIdea;
-    setIdeas(prev => [idea, ...prev]);
+    setIdeas(prev => [idea, ...prev.filter(i => i.id !== idea.id)]);
     setActiveIdea(idea);
     setAgentMessages({});
     setDocuments([]);
@@ -115,9 +114,6 @@ const Squad = () => {
     setActivityFeed([]);
     setCenterTab('activity');
     setViewingDocId(null);
-    setShowNewDialog(false);
-    setNewTitle('');
-    toast.success('Idea created — chat with the Market Strategist to validate your idea');
   };
 
   const handleMessagesChange = useCallback((agent: string, newMessages: Message[]) => {
@@ -632,26 +628,13 @@ const Squad = () => {
         </div>
       )}
 
-      {/* New Idea Dialog */}
-      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-base">New Idea — Elite 9 Squad</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 pt-2">
-            <Input
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              placeholder="e.g. AI meeting notetaker that auto-sends follow-ups"
-              onKeyDown={e => e.key === 'Enter' && createIdea()}
-              className="text-sm"
-            />
-            <Button onClick={createIdea} disabled={!newTitle.trim()} className="w-full gap-2">
-              <Zap className="w-4 h-4" /> Launch Squad
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <NewIdeaModal
+        open={showNewDialog}
+        onOpenChange={setShowNewDialog}
+        onCreated={handleIdeaCreated}
+        initialPhase="squad"
+        modalTitle="New Idea — Elite 9 Squad"
+      />
     </div>
   );
 };
