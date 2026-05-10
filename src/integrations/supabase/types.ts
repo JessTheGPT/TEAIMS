@@ -284,6 +284,51 @@ export type Database = {
           },
         ]
       }
+      firecrawl_extractions: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          links: Json | null
+          markdown: string | null
+          metadata: Json | null
+          mode: string
+          status: string
+          summary: string | null
+          title: string | null
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          links?: Json | null
+          markdown?: string | null
+          metadata?: Json | null
+          mode?: string
+          status?: string
+          summary?: string | null
+          title?: string | null
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          links?: Json | null
+          markdown?: string | null
+          metadata?: Json | null
+          mode?: string
+          status?: string
+          summary?: string | null
+          title?: string | null
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       idea_documents: {
         Row: {
           agent: string
@@ -644,6 +689,63 @@ export type Database = {
           name?: string
           slug?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      telegram_links: {
+        Row: {
+          chat_id: number
+          first_name: string | null
+          id: string
+          linked_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          chat_id: number
+          first_name?: string | null
+          id?: string
+          linked_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          chat_id?: number
+          first_name?: string | null
+          id?: string
+          linked_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      telegram_messages: {
+        Row: {
+          chat_id: number
+          created_at: string
+          from_user_id: number | null
+          raw_update: Json
+          text: string | null
+          update_id: number
+          user_id: string | null
+        }
+        Insert: {
+          chat_id: number
+          created_at?: string
+          from_user_id?: number | null
+          raw_update: Json
+          text?: string | null
+          update_id: number
+          user_id?: string | null
+        }
+        Update: {
+          chat_id?: number
+          created_at?: string
+          from_user_id?: number | null
+          raw_update?: Json
+          text?: string | null
+          update_id?: number
+          user_id?: string | null
         }
         Relationships: []
       }

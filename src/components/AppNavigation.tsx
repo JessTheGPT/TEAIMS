@@ -36,6 +36,7 @@ const navItems = [
       { label: 'Context Files', href: '/context' },
       { label: 'Judgement', href: '/judgement' },
       { label: 'Constraints', href: '/constraints' },
+      { label: 'Connectors', href: '/connectors' },
     ],
   },
 ];
