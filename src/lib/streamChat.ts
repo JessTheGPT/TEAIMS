@@ -6,12 +6,14 @@ export async function streamChat({
   messages,
   agent,
   context,
+  mode = "chat",
   onDelta,
   onDone,
 }: {
   messages: Msg[];
   agent: string;
   context?: string;
+  mode?: "chat" | "debate" | "document";
   onDelta: (deltaText: string) => void;
   onDone: () => void;
 }) {
@@ -21,8 +23,9 @@ export async function streamChat({
       "Content-Type": "application/json",
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages, agent, context }),
+    body: JSON.stringify({ messages, agent, context, mode }),
   });
+
 
   if (!resp.ok || !resp.body) {
     if (resp.status === 429) throw new Error("Rate limited. Please try again shortly.");
