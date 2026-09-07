@@ -106,20 +106,33 @@ const DebateCanvas = ({ ideaId, userId, completedAgents, documents, onDebateComp
           return `**${a?.name || m.agent}** (Round ${m.round}, ${m.stance}): ${m.content}`;
         }).join('\n\n');
 
-        const redLinesList = stance.redLines.map(r => `- 🔴 ${r.rule}: ${r.description}`).join('\n');
-        const flexList = stance.flexAreas.map(f => `- 🟢 ${f.area}: ${f.description}`).join('\n');
+        const redLinesList = stance.redLines.map(r => `- ${r.rule}: ${r.description}`).join('\n');
+        const flexList = stance.flexAreas.map(f => `- ${f.area}: ${f.description}`).join('\n');
+        const isLastRound = round >= (debate.isOpenForum ? 2 : debate.rounds);
 
-        const debateSystemPrompt = debate.isOpenForum
-          ? `You are ${agent.name} (${agent.role}) in a FINAL ALIGNMENT FORUM.\n\nYour RED LINES:\n${redLinesList}\n\nYour FLEXIBLE AREAS:\n${flexList}\n\nRULES:\n1. State your position clearly and concisely\n2. Flag ANY red line violations\n3. Acknowledge compromise areas\n4. Signal ALIGNMENT_REACHED if majority aligns and no red lines crossed\n5. State RED_LINE_VIOLATED if one is crossed\n6. IMPORTANT: Keep responses to 3-5 sentences MAX. Be direct and conversational, not academic.\n\nTopic: ${debate.topic}\n${prevMessages ? `\nPrevious:\n${prevMessages}` : ''}`
-          : `You are ${agent.name} (${agent.role}) in a structured debate on: "${debate.topic}"\n\nYour RED LINES:\n${redLinesList}\n\nYour FLEXIBLE AREAS:\n${flexList}\n\nRULES:\n1. Round ${round} of ${debate.rounds}\n2. ${i === 0 ? 'Open with your position' : 'Respond to previous arguments'}\n3. Say RED_LINE_VIOLATED if a red line is crossed\n4. Propose specific compromises where possible\n5. Stay in character\n6. IMPORTANT: Keep to 3-5 sentences MAX. Be conversational and direct, not long-winded.\n7. Final round: state ALIGN, CONCEDE, or BLOCK in one word then explain briefly.\n\nTopic: ${debate.topic}\nTrigger: ${debate.trigger}\n${prevMessages ? `\nPrevious:\n${prevMessages}` : ''}`;
+        const debateSystemPrompt = `DEBATE TOPIC: ${debate.topic}
+Question on the table: ${debate.trigger}
+${debate.isOpenForum ? 'This is the final alignment check with the whole team.' : `Round ${round} of ${debate.rounds}.`}
+
+Your lines you won't cross:
+${redLinesList}
+
+Where you can flex:
+${flexList}
+
+${i === 0 ? 'Open: state your position in one clear sentence.' : 'Respond directly to what was just said — do not restate your opening.'}
+${isLastRound ? 'This is your last turn: start with ALIGN, CONCEDE, or BLOCK, then one sentence of reasoning.' : ''}
+${prevMessages ? `\nWhat has been said so far:\n${prevMessages}` : ''}`;
 
         let content = '';
         const msgId = crypto.randomUUID();
 
         await streamChat({
-          messages: [{ role: 'user', content: `Engage in this debate as ${agent.name}. Round ${round}.` }],
+          messages: [{ role: 'user', content: `Your turn in the debate. Keep it to 3 sentences.` }],
           agent: agentId,
-          context: `${debateSystemPrompt}\n\n---\nProject Context:\n${context}`,
+          mode: 'debate',
+          context: `${debateSystemPrompt}\n\n---\nProject context:\n${context}`,
+
           onDelta: (delta) => {
             content += delta;
             const msg: DebateMessage = {
