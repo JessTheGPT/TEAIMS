@@ -102,5 +102,17 @@ export const SQUAD_AGENTS: SquadAgent[] = [
 ];
 
 export function getSquadAgentById(id: string): SquadAgent | undefined {
+  if (id === 'squad_chief') return SQUAD_CHIEF;
   return SQUAD_AGENTS.find(a => a.id === id);
 }
+
+/** Persistent single point of contact for the Elite 9 flow (not a pipeline step). */
+export const SQUAD_CHIEF: SquadAgent = {
+  id: 'squad_chief',
+  name: 'Chief of Staff',
+  role: 'Your single point of contact',
+  icon: '🧭',
+  color: 'hsl(210 82% 62%)',
+  description: 'Keeps the thread, runs the right specialist next, and checks with you before big steps.',
+  documents: [],
+};

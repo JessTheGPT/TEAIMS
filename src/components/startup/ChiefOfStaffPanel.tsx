@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { streamChat } from '@/lib/streamChat';
 import { STARTUP_AGENTS } from '@/lib/startupAgents';
-import { SQUAD_AGENTS } from '@/lib/squadAgents';
+import { SQUAD_AGENTS, SQUAD_CHIEF } from '@/lib/squadAgents';
 
 interface ChiefOfStaffPanelProps {
   ideaId: string;
@@ -29,7 +29,7 @@ const ChiefOfStaffPanel = ({ ideaId, agentCode, context, collapsed, onToggle }: 
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const agentInfo = STARTUP_AGENTS.find(a => a.id === agentCode) || SQUAD_AGENTS.find(a => a.id === agentCode);
+  const agentInfo = STARTUP_AGENTS.find(a => a.id === agentCode) || [...SQUAD_AGENTS, SQUAD_CHIEF].find(a => a.id === agentCode);
 
   // Load thread on agent change
   useEffect(() => {
