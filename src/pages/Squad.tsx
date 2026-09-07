@@ -245,6 +245,7 @@ const Squad = () => {
       await streamChat({
         messages: [{ role: 'user', content: `Create the ${docTitle} based on the following startup context.` }],
         agent: agentId,
+        mode: 'document',
         context: fullContext,
         onDelta: (delta) => {
           content += delta;
@@ -285,6 +286,7 @@ const Squad = () => {
                   { role: 'user', content: `Your output was flagged by the system:\n\n${violationMsgs}\n\nRevise ONLY to fix these violations.` },
                 ],
                 agent: agentId,
+                mode: 'document',
                 context: fullContext,
                 onDelta: (delta) => {
                   revisedContent += delta;

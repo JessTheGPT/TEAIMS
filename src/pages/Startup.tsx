@@ -225,6 +225,7 @@ const Startup = () => {
         await streamChat({
           messages: [{ role: 'user', content: `Create the ${docTitle} based on the following startup context.` }],
           agent: agent.id,
+          mode: 'document',
           context: fullContext,
           onDelta: (delta) => {
             content += delta;
@@ -263,6 +264,7 @@ const Startup = () => {
                     { role: 'user', content: retryContent },
                   ],
                   agent: agent.id,
+                  mode: 'document',
                   context: fullContext,
                   onDelta: (delta) => {
                     revisedContent += delta;
