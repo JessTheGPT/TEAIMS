@@ -4,6 +4,7 @@ import { Menu, X, Shield, ChevronDown, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import ThemeToggle from '@/components/ThemeToggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,14 +58,14 @@ const AppNavigation = () => {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-b border-border/40">
-        <div className="max-w-6xl mx-auto px-4">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background border-b-2 border-foreground">
+        <div className="px-4">
           <div className="flex items-center justify-between h-12">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <Shield className="w-3 h-3 text-primary" />
+              <div className="w-6 h-6 bg-foreground flex items-center justify-center">
+                <Shield className="w-3 h-3 text-background" />
               </div>
-              <span className="font-semibold text-foreground text-xs hidden sm:block tracking-tight">Agent Armory</span>
+              <span className="font-mono font-bold text-foreground text-xs hidden sm:block uppercase">TEAIMS / Command</span>
             </Link>
 
             {/* Desktop Nav */}
@@ -88,7 +89,7 @@ const AppNavigation = () => {
                       </button>
                       {openDropdown === item.label && (
                         <div className="absolute top-full left-0 pt-1 min-w-[140px]">
-                          <div className="bg-popover border border-border rounded-lg shadow-lg py-1">
+                          <div className="bg-popover border-2 border-foreground rounded-none py-1">
                             {item.children.map((child) => (
                               <Link
                                 key={child.href}
@@ -123,12 +124,13 @@ const AppNavigation = () => {
             </div>
 
             <div className="hidden md:flex items-center gap-1.5">
+              <ThemeToggle />
               {user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <button className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                       <Avatar className="h-7 w-7 cursor-pointer hover:opacity-80 transition-opacity">
-                        <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                        <AvatarFallback className="text-[10px] font-mono font-semibold bg-foreground text-background">
                           {userInitial}
                         </AvatarFallback>
                       </Avatar>
@@ -158,7 +160,7 @@ const AppNavigation = () => {
 
             <button
               onClick={() => setIsMobileOpen(!isMobileOpen)}
-              className="md:hidden p-1.5 rounded hover:bg-secondary/50 transition-colors"
+              className="md:hidden p-1.5 hover:bg-secondary transition-colors"
             >
               {isMobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
